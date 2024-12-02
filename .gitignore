@@ -1,0 +1,8 @@
+env
+.env
+venv
+.venv
+.ruff_cache
+.cache
+build
+__pycache__

@@ -1,0 +1,72 @@
+start: comp_unit
+comp_unit: (const_decl | var_decl | func_def)+
+const_decl: "const" btype const_def ("," const_def)* ";"
+btype: INT_T | FLOAT_T
+const_def: ident (LBRACKET INT? RBRACKET)? "=" const_init_val
+const_init_val: signed_number | "{" "}" | "{" signed_number ("," signed_number)* "}" 
+signed_number: (PLUS | MINUS)? number
+var_decl: btype var_def ("," var_def)* ";"
+var_def: ident (LBRACKET INT? RBRACKET)? ("=" init_val)?
+init_val: exp | "{" "}" | "{" exp ("," exp)* "}" 
+func_def: btype ident "(" (func_fparam ("," func_fparam)*)? ")" block | VOID_T ident "(" (func_fparam ("," func_fparam)*)? ")" block
+func_fparam: btype ident (LBRACKET RBRACKET)?
+block: "{" (block_item)* "}"
+block_item: const_decl | var_decl | stmt
+stmt: assign_stmt | empty_stmt | exp_stmt | block | if_stmt | while_stmt | break_stmt | continue_stmt | return_stmt
+assign_stmt: lval "=" exp ";"
+empty_stmt: ";"
+exp_stmt: exp ";"
+if_stmt: "if" "(" cond ")" stmt ("else" stmt)?
+while_stmt: "while" "(" cond ")" stmt 
+break_stmt: "break" ";"
+continue_stmt: "continue" ";"
+return_stmt: "return" exp? ";"
+exp: add_exp
+cond: lor_exp
+lor_exp: land_exp (LOR land_exp)*
+land_exp: eq_exp (LAND eq_exp)*
+eq_exp: rel_exp ((EQ | NEQ) rel_exp)*
+rel_exp: add_exp ((LT | GT | LTE | GTE) add_exp)*
+add_exp: mul_exp ((PLUS | MINUS) mul_exp)*
+mul_exp: unary_exp ((MUL | DIV | MOD) unary_exp)*
+unary_exp: "(" exp ")" | lval | number | func_call | ((PLUS | MINUS | NOT) unary_exp)
+func_call: ident "(" (func_rparam ("," func_rparam)*)? ")"
+func_rparam: exp
+lval: ident ("[" exp "]")? 
+number: INT | FLOAT
+PLUS: "+"
+MINUS: "-"
+MUL: "*"
+DIV: "/"
+MOD: "%"
+LOR: "||"
+LAND: "&&"
+EQ: "=="
+NEQ: "!="
+LT: "<"
+LTE: "<="
+GT: ">"
+GTE: ">="
+NOT: "!"
+LBRACKET: "["
+RBRACKET: "]"
+ident: NAME
+DIGIT: "0".."9"
+NONZERO: "1".."9"
+OCTDIGIT: "0".."7"
+HEXDIGIT: "a".."f"|"A".."F"|DIGIT
+INT: NONZERO DIGIT* | "0" OCTDIGIT* | ("0x" | "0X") HEXDIGIT+
+FLOAT: INT "." INT
+LCASE_LETTER: "a".."z"
+UCASE_LETTER: "A".."Z"
+LETTER: UCASE_LETTER | LCASE_LETTER
+NAME: ("_"|LETTER) ("_"|LETTER|DIGIT)*
+WS: /[ \t\f\r\n]/+
+C_COMMENT: "/*" /(.|\n)*?/ "*/"
+CPP_COMMENT: /\/\/[^\n]*/
+VOID_T: "void"
+INT_T: "int"
+FLOAT_T: "float"
+%ignore WS
+%ignore C_COMMENT
+%ignore CPP_COMMENT
