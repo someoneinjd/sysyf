@@ -3,6 +3,7 @@ import argparse
 
 from sysyf_ast.builder import ASTBuilder
 from sysyf_ast.printer import ASTPrinter
+from sysyf_ir.builder import IRBuilder
 from sysyf_parser.sysyf_parser import Lark_StandAlone
 
 
@@ -16,8 +17,9 @@ def run_compiler(source_file: str, output_file: str, emit_ir: bool, emit_ast: bo
     if emit_ast:
         print(ASTPrinter().visit_Assembly(ast))
     if emit_ir:
-        pass
-
+        ir_code = IRBuilder().visit_Assembly(ast)
+        with open(output_file, "w") as fp:
+            fp.write(ir_code)
 
 def main():
     parser = argparse.ArgumentParser(description="SysYF IR Compiler")

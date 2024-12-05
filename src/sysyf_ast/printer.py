@@ -12,7 +12,6 @@ from .ast import (
     FuncDef,
     FuncParam,
     IfStmt,
-    Literal,
     LVal,
     ReturnStmt,
     Type,
@@ -44,7 +43,7 @@ class ASTPrinter(ASTVisitor):
     def visit_VarDefStmt(self, node: VarDefStmt):
         ret_str = f"{'const ' if node.is_const else ''}{self.visit_Type(node.type)} {node.name}"
         if node.array_length is not None:
-            ret_str += f"[{self.visit_Literal(node.array_length)}]"
+            ret_str += f"[{node.array_length}]"
             if node.init_vals is not None:
                 init_vals_str = ", ".join(self.visit_Expr(i) for i in node.init_vals)
                 ret_str += f" = {{{init_vals_str}}}"
@@ -63,8 +62,11 @@ class ASTPrinter(ASTVisitor):
             ret_str += "[]"
         return ret_str
 
-    def visit_Literal(self, node: Literal):
-        return str(node.val)
+    def visit_Int(self, node: int):
+        return str(node)
+
+    def visit_Float(self, node: float):
+        return str(node)
 
     def visit_FuncCallExpr(self, node: FuncCallExpr):
         return f"{node.func_name}({', '.join(self.visit_Expr(i) for i in node.params)})"

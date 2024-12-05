@@ -30,28 +30,9 @@ from copy import deepcopy
 from abc import ABC, abstractmethod
 from types import ModuleType
 from typing import (
-    TypeVar,
-    Generic,
-    Type,
-    Tuple,
-    List,
-    Dict,
-    Iterator,
-    Collection,
-    Callable,
-    Optional,
-    FrozenSet,
-    Any,
-    Union,
-    Iterable,
-    IO,
-    TYPE_CHECKING,
-    overload,
-    Sequence,
-    Pattern as REPattern,
-    ClassVar,
-    Set,
-    Mapping,
+    TypeVar, Generic, Type, Tuple, List, Dict, Iterator, Collection, Callable, Optional, FrozenSet, Any,
+    Union, Iterable, IO, TYPE_CHECKING, overload, Sequence,
+    Pattern as REPattern, ClassVar, Set, Mapping
 )
 
 
@@ -63,7 +44,7 @@ class ConfigurationError(LarkError, ValueError):
     pass
 
 
-def assert_config(value, options: Collection, msg="Got %r, expected one of %s"):
+def assert_config(value, options: Collection, msg='Got %r, expected one of %s'):
     if value not in options:
         raise ConfigurationError(msg % (value, options))
 
@@ -79,44 +60,38 @@ class ParseError(LarkError):
 class LexError(LarkError):
     pass
 
-
-T = TypeVar("T")
-
+T = TypeVar('T')
 
 class UnexpectedInput(LarkError):
-    # --
+    #--
     line: int
     column: int
     pos_in_stream = None
     state: Any
     _terminals_by_name = None
-    interactive_parser: "InteractiveParser"
+    interactive_parser: 'InteractiveParser'
 
-    def get_context(self, text: str, span: int = 40) -> str:
-        # --
+    def get_context(self, text: str, span: int=40) -> str:
+        #--
         assert self.pos_in_stream is not None, self
         pos = self.pos_in_stream
         start = max(pos - span, 0)
         end = pos + span
         if not isinstance(text, bytes):
-            before = text[start:pos].rsplit("\n", 1)[-1]
-            after = text[pos:end].split("\n", 1)[0]
-            return before + after + "\n" + " " * len(before.expandtabs()) + "^\n"
+            before = text[start:pos].rsplit('\n', 1)[-1]
+            after = text[pos:end].split('\n', 1)[0]
+            return before + after + '\n' + ' ' * len(before.expandtabs()) + '^\n'
         else:
-            before = text[start:pos].rsplit(b"\n", 1)[-1]
-            after = text[pos:end].split(b"\n", 1)[0]
-            return (before + after + b"\n" + b" " * len(before.expandtabs()) + b"^\n").decode(
-                "ascii", "backslashreplace"
-            )
+            before = text[start:pos].rsplit(b'\n', 1)[-1]
+            after = text[pos:end].split(b'\n', 1)[0]
+            return (before + after + b'\n' + b' ' * len(before.expandtabs()) + b'^\n').decode("ascii", "backslashreplace")
 
-    def match_examples(
-        self,
-        parse_fn: "Callable[[str], Tree]",
-        examples: Union[Mapping[T, Iterable[str]], Iterable[Tuple[T, Iterable[str]]]],
-        token_type_match_fallback: bool = False,
-        use_accepts: bool = True,
-    ) -> Optional[T]:
-        # --
+    def match_examples(self, parse_fn: 'Callable[[str], Tree]',
+                             examples: Union[Mapping[T, Iterable[str]], Iterable[Tuple[T, Iterable[str]]]],
+                             token_type_match_fallback: bool=False,
+                             use_accepts: bool=True
+                         ) -> Optional[T]:
+        #--
         assert self.state is not None, "Not supported for this exception"
 
         if isinstance(examples, Mapping):
@@ -137,15 +112,15 @@ class UnexpectedInput(LarkError):
                             and isinstance(ut, UnexpectedToken)
                             and ut.accepts != self.accepts
                         ):
-                            logger.debug(
-                                "Different accepts with same state[%d]: %s != %s at example [%s][%s]"
-                                % (self.state, self.accepts, ut.accepts, i, j)
-                            )
+                            logger.debug("Different accepts with same state[%d]: %s != %s at example [%s][%s]" %
+                                         (self.state, self.accepts, ut.accepts, i, j))
                             continue
-                        if isinstance(self, (UnexpectedToken, UnexpectedEOF)) and isinstance(
-                            ut, (UnexpectedToken, UnexpectedEOF)
+                        if (
+                            isinstance(self, (UnexpectedToken, UnexpectedEOF))
+                            and isinstance(ut, (UnexpectedToken, UnexpectedEOF))
                         ):
                             if ut.token == self.token:  ##
+
                                 logger.debug("Exact Match at example [%s][%s]" % (i, j))
                                 return label
 
@@ -166,12 +141,12 @@ class UnexpectedInput(LarkError):
         if self._terminals_by_name:
             d = self._terminals_by_name
             expected = [d[t_name].user_repr() if t_name in d else t_name for t_name in expected]
-        return "Expected one of: \n\t* %s\n" % "\n\t* ".join(expected)
+        return "Expected one of: \n\t* %s\n" % '\n\t* '.join(expected)
 
 
 class UnexpectedEOF(ParseError, UnexpectedInput):
-    # --
-    expected: "List[Token]"
+    #--
+    expected: 'List[Token]'
 
     def __init__(self, expected, state=None, terminals_by_name=None):
         super(UnexpectedEOF, self).__init__()
@@ -179,13 +154,13 @@ class UnexpectedEOF(ParseError, UnexpectedInput):
         self.expected = expected
         self.state = state
         from .lexer import Token
-
         self.token = Token("<EOF>", "")  ##
 
         self.pos_in_stream = -1
         self.line = -1
         self.column = -1
         self._terminals_by_name = terminals_by_name
+
 
     def __str__(self):
         message = "Unexpected end-of-input. "
@@ -194,24 +169,13 @@ class UnexpectedEOF(ParseError, UnexpectedInput):
 
 
 class UnexpectedCharacters(LexError, UnexpectedInput):
-    # --
+    #--
 
     allowed: Set[str]
     considered_tokens: Set[Any]
 
-    def __init__(
-        self,
-        seq,
-        lex_pos,
-        line,
-        column,
-        allowed=None,
-        considered_tokens=None,
-        state=None,
-        token_history=None,
-        terminals_by_name=None,
-        considered_rules=None,
-    ):
+    def __init__(self, seq, lex_pos, line, column, allowed=None, considered_tokens=None, state=None, token_history=None,
+                 terminals_by_name=None, considered_rules=None):
         super(UnexpectedCharacters, self).__init__()
 
         ##
@@ -228,48 +192,36 @@ class UnexpectedCharacters(LexError, UnexpectedInput):
         self.token_history = token_history
 
         if isinstance(seq, bytes):
-            self.char = seq[lex_pos : lex_pos + 1].decode("ascii", "backslashreplace")
+            self.char = seq[lex_pos:lex_pos + 1].decode("ascii", "backslashreplace")
         else:
             self.char = seq[lex_pos]
         self._context = self.get_context(seq)
 
+
     def __str__(self):
-        message = "No terminal matches '%s' in the current parser context, at line %d col %d" % (
-            self.char,
-            self.line,
-            self.column,
-        )
-        message += "\n\n" + self._context
+        message = "No terminal matches '%s' in the current parser context, at line %d col %d" % (self.char, self.line, self.column)
+        message += '\n\n' + self._context
         if self.allowed:
             message += self._format_expected(self.allowed)
         if self.token_history:
-            message += "\nPrevious tokens: %s\n" % ", ".join(repr(t) for t in self.token_history)
+            message += '\nPrevious tokens: %s\n' % ', '.join(repr(t) for t in self.token_history)
         return message
 
 
 class UnexpectedToken(ParseError, UnexpectedInput):
-    # --
+    #--
 
     expected: Set[str]
     considered_rules: Set[str]
 
-    def __init__(
-        self,
-        token,
-        expected,
-        considered_rules=None,
-        state=None,
-        interactive_parser=None,
-        terminals_by_name=None,
-        token_history=None,
-    ):
+    def __init__(self, token, expected, considered_rules=None, state=None, interactive_parser=None, terminals_by_name=None, token_history=None):
         super(UnexpectedToken, self).__init__()
 
         ##
 
-        self.line = getattr(token, "line", "?")
-        self.column = getattr(token, "column", "?")
-        self.pos_in_stream = getattr(token, "start_pos", None)
+        self.line = getattr(token, 'line', '?')
+        self.column = getattr(token, 'column', '?')
+        self.pos_in_stream = getattr(token, 'start_pos', None)
         self.state = state
 
         self.token = token
@@ -281,6 +233,7 @@ class UnexpectedToken(ParseError, UnexpectedInput):
         self._terminals_by_name = terminals_by_name
         self.token_history = token_history
 
+
     @property
     def accepts(self) -> Set[str]:
         if self._accepts is NO_VALUE:
@@ -288,22 +241,19 @@ class UnexpectedToken(ParseError, UnexpectedInput):
         return self._accepts
 
     def __str__(self):
-        message = "Unexpected token %r at line %s, column %s.\n%s" % (
-            self.token,
-            self.line,
-            self.column,
-            self._format_expected(self.accepts or self.expected),
-        )
+        message = ("Unexpected token %r at line %s, column %s.\n%s"
+                   % (self.token, self.line, self.column, self._format_expected(self.accepts or self.expected)))
         if self.token_history:
             message += "Previous tokens: %r\n" % self.token_history
 
         return message
 
 
-class VisitError(LarkError):
-    # --
 
-    obj: "Union[Tree, Token]"
+class VisitError(LarkError):
+    #--
+
+    obj: 'Union[Tree, Token]'
     orig_exc: Exception
 
     def __init__(self, rule, obj, orig_exc):
@@ -336,9 +286,7 @@ NO_VALUE = object()
 T = TypeVar("T")
 
 
-def classify(
-    seq: Iterable, key: Optional[Callable] = None, value: Optional[Callable] = None
-) -> Dict:
+def classify(seq: Iterable, key: Optional[Callable] = None, value: Optional[Callable] = None) -> Dict:
     d: Dict[Any, Any] = {}
     for item in seq:
         k = key(item) if (key is not None) else item
@@ -352,12 +300,13 @@ def classify(
 
 def _deserialize(data: Any, namespace: Dict[str, Any], memo: Dict) -> Any:
     if isinstance(data, dict):
-        if "__type__" in data:  ##
-            class_ = namespace[data["__type__"]]
+        if '__type__' in data:  ##
+
+            class_ = namespace[data['__type__']]
             return class_.deserialize(data, memo)
-        elif "@" in data:
-            return memo[data["@"]]
-        return {key: _deserialize(value, namespace, memo) for key, value in data.items()}
+        elif '@' in data:
+            return memo[data['@']]
+        return {key:_deserialize(value, namespace, memo) for key, value in data.items()}
     elif isinstance(data, list):
         return [_deserialize(value, namespace, memo) for value in data]
     return data
@@ -365,34 +314,33 @@ def _deserialize(data: Any, namespace: Dict[str, Any], memo: Dict) -> Any:
 
 _T = TypeVar("_T", bound="Serialize")
 
-
 class Serialize:
-    # --
+    #--
 
     def memo_serialize(self, types_to_memoize: List) -> Any:
         memo = SerializeMemoizer(types_to_memoize)
         return self.serialize(memo), memo.serialize()
 
-    def serialize(self, memo=None) -> Dict[str, Any]:
+    def serialize(self, memo = None) -> Dict[str, Any]:
         if memo and memo.in_types(self):
-            return {"@": memo.memoized.get(self)}
+            return {'@': memo.memoized.get(self)}
 
-        fields = getattr(self, "__serialize_fields__")
+        fields = getattr(self, '__serialize_fields__')
         res = {f: _serialize(getattr(self, f), memo) for f in fields}
-        res["__type__"] = type(self).__name__
-        if hasattr(self, "_serialize"):
+        res['__type__'] = type(self).__name__
+        if hasattr(self, '_serialize'):
             self._serialize(res, memo)
         return res
 
     @classmethod
     def deserialize(cls: Type[_T], data: Dict[str, Any], memo: Dict[int, Any]) -> _T:
-        namespace = getattr(cls, "__serialize_namespace__", [])
-        namespace = {c.__name__: c for c in namespace}
+        namespace = getattr(cls, '__serialize_namespace__', [])
+        namespace = {c.__name__:c for c in namespace}
 
-        fields = getattr(cls, "__serialize_fields__")
+        fields = getattr(cls, '__serialize_fields__')
 
-        if "@" in data:
-            return memo[data["@"]]
+        if '@' in data:
+            return memo[data['@']]
 
         inst = cls.__new__(cls)
         for f in fields:
@@ -401,16 +349,16 @@ class Serialize:
             except KeyError as e:
                 raise KeyError("Cannot find key for class", cls, e)
 
-        if hasattr(inst, "_deserialize"):
+        if hasattr(inst, '_deserialize'):
             inst._deserialize()
 
         return inst
 
 
 class SerializeMemoizer(Serialize):
-    # --
+    #--
 
-    __serialize_fields__ = ("memoized",)
+    __serialize_fields__ = 'memoized',
 
     def __init__(self, types_to_memoize: List) -> None:
         self.types_to_memoize = tuple(types_to_memoize)
@@ -420,18 +368,17 @@ class SerializeMemoizer(Serialize):
         return isinstance(value, self.types_to_memoize)
 
     def serialize(self) -> Dict[int, Any]:  ##
+
         return _serialize(self.memoized.reversed(), None)
 
     @classmethod
-    def deserialize(
-        cls, data: Dict[int, Any], namespace: Dict[str, Any], memo: Dict[Any, Any]
-    ) -> Dict[int, Any]:  ##
+    def deserialize(cls, data: Dict[int, Any], namespace: Dict[str, Any], memo: Dict[Any, Any]) -> Dict[int, Any]:  ##
+
         return _deserialize(data, namespace, memo)
 
 
 try:
     import regex
-
     _has_regex = True
 except ImportError:
     _has_regex = False
@@ -443,8 +390,7 @@ else:
     import sre_parse
     import sre_constants
 
-categ_pattern = re.compile(r"\\p{[A-Za-z_]+}")
-
+categ_pattern = re.compile(r'\\p{[A-Za-z_]+}')
 
 def get_regexp_width(expr: str) -> Union[Tuple[int, int], List[int]]:
     if _has_regex:
@@ -454,13 +400,10 @@ def get_regexp_width(expr: str) -> Union[Tuple[int, int], List[int]]:
 
         ##
 
-        regexp_final = re.sub(categ_pattern, "A", expr)
+        regexp_final = re.sub(categ_pattern, 'A', expr)
     else:
         if re.search(categ_pattern, expr):
-            raise ImportError(
-                "`regex` module must be installed in order to use Unicode categories.",
-                expr,
-            )
+            raise ImportError('`regex` module must be installed in order to use Unicode categories.', expr)
         regexp_final = expr
     try:
         ##
@@ -480,7 +423,7 @@ def get_regexp_width(expr: str) -> Union[Tuple[int, int], List[int]]:
             ##
 
             MAXWIDTH = getattr(sre_parse, "MAXWIDTH", sre_constants.MAXREPEAT)
-            if c.match("") is None:
+            if c.match('') is None:
                 ##
 
                 return 1, int(MAXWIDTH)
@@ -488,7 +431,9 @@ def get_regexp_width(expr: str) -> Union[Tuple[int, int], List[int]]:
                 return 0, int(MAXWIDTH)
 
 
+
 class Meta:
+
     empty: bool
     line: int
     column: int
@@ -496,7 +441,7 @@ class Meta:
     end_line: int
     end_column: int
     end_pos: int
-    orig_expansion: "List[TerminalDef]"
+    orig_expansion: 'List[TerminalDef]'
     match_tree: bool
 
     def __init__(self):
@@ -504,18 +449,16 @@ class Meta:
 
 
 _Leaf_T = TypeVar("_Leaf_T")
-Branch = Union[_Leaf_T, "Tree[_Leaf_T]"]
+Branch = Union[_Leaf_T, 'Tree[_Leaf_T]']
 
 
 class Tree(Generic[_Leaf_T]):
-    # --
+    #--
 
     data: str
-    children: "List[Branch[_Leaf_T]]"
+    children: 'List[Branch[_Leaf_T]]'
 
-    def __init__(
-        self, data: str, children: "List[Branch[_Leaf_T]]", meta: Optional[Meta] = None
-    ) -> None:
+    def __init__(self, data: str, children: 'List[Branch[_Leaf_T]]', meta: Optional[Meta]=None) -> None:
         self.data = data
         self.children = children
         self._meta = meta
@@ -527,44 +470,43 @@ class Tree(Generic[_Leaf_T]):
         return self._meta
 
     def __repr__(self):
-        return "Tree(%r, %r)" % (self.data, self.children)
+        return 'Tree(%r, %r)' % (self.data, self.children)
 
     def _pretty_label(self):
         return self.data
 
     def _pretty(self, level, indent_str):
-        yield f"{indent_str*level}{self._pretty_label()}"
+        yield f'{indent_str*level}{self._pretty_label()}'
         if len(self.children) == 1 and not isinstance(self.children[0], Tree):
-            yield f"\t{self.children[0]}\n"
+            yield f'\t{self.children[0]}\n'
         else:
-            yield "\n"
+            yield '\n'
             for n in self.children:
                 if isinstance(n, Tree):
-                    yield from n._pretty(level + 1, indent_str)
+                    yield from n._pretty(level+1, indent_str)
                 else:
-                    yield f"{indent_str*(level+1)}{n}\n"
+                    yield f'{indent_str*(level+1)}{n}\n'
 
-    def pretty(self, indent_str: str = "  ") -> str:
-        # --
-        return "".join(self._pretty(0, indent_str))
+    def pretty(self, indent_str: str='  ') -> str:
+        #--
+        return ''.join(self._pretty(0, indent_str))
 
-    def __rich__(self, parent: Optional["rich.tree.Tree"] = None) -> "rich.tree.Tree":
-        # --
+    def __rich__(self, parent:Optional['rich.tree.Tree']=None) -> 'rich.tree.Tree':
+        #--
         return self._rich(parent)
 
     def _rich(self, parent):
         if parent:
-            tree = parent.add(f"[bold]{self.data}[/bold]")
+            tree = parent.add(f'[bold]{self.data}[/bold]')
         else:
             import rich.tree
-
             tree = rich.tree.Tree(self.data)
 
         for c in self.children:
             if isinstance(c, Tree):
                 c._rich(tree)
             else:
-                tree.add(f"[green]{c}[/green]")
+                tree.add(f'[green]{c}[/green]')
 
         return tree
 
@@ -580,23 +522,20 @@ class Tree(Generic[_Leaf_T]):
     def __hash__(self) -> int:
         return hash((self.data, tuple(self.children)))
 
-    def iter_subtrees(self) -> "Iterator[Tree[_Leaf_T]]":
-        # --
+    def iter_subtrees(self) -> 'Iterator[Tree[_Leaf_T]]':
+        #--
         queue = [self]
         subtrees = dict()
         for subtree in queue:
             subtrees[id(subtree)] = subtree
-            queue += [
-                c
-                for c in reversed(subtree.children)
-                if isinstance(c, Tree) and id(c) not in subtrees
-            ]
+            queue += [c for c in reversed(subtree.children)
+                      if isinstance(c, Tree) and id(c) not in subtrees]
 
         del queue
         return reversed(list(subtrees.values()))
 
     def iter_subtrees_topdown(self):
-        # --
+        #--
         stack = [self]
         stack_append = stack.append
         stack_pop = stack.pop
@@ -608,33 +547,31 @@ class Tree(Generic[_Leaf_T]):
             for child in reversed(node.children):
                 stack_append(child)
 
-    def find_pred(self, pred: "Callable[[Tree[_Leaf_T]], bool]") -> "Iterator[Tree[_Leaf_T]]":
-        # --
+    def find_pred(self, pred: 'Callable[[Tree[_Leaf_T]], bool]') -> 'Iterator[Tree[_Leaf_T]]':
+        #--
         return filter(pred, self.iter_subtrees())
 
-    def find_data(self, data: str) -> "Iterator[Tree[_Leaf_T]]":
-        # --
+    def find_data(self, data: str) -> 'Iterator[Tree[_Leaf_T]]':
+        #--
         return self.find_pred(lambda t: t.data == data)
 
 
 from functools import wraps, update_wrapper
 from inspect import getmembers, getmro
 
-_Return_T = TypeVar("_Return_T")
-_Return_V = TypeVar("_Return_V")
-_Leaf_T = TypeVar("_Leaf_T")
-_Leaf_U = TypeVar("_Leaf_U")
-_R = TypeVar("_R")
+_Return_T = TypeVar('_Return_T')
+_Return_V = TypeVar('_Return_V')
+_Leaf_T = TypeVar('_Leaf_T')
+_Leaf_U = TypeVar('_Leaf_U')
+_R = TypeVar('_R')
 _FUNC = Callable[..., _Return_T]
 _DECORATED = Union[_FUNC, type]
 
-
 class _DiscardType:
-    # --
+    #--
 
     def __repr__(self):
         return "lark.visitors.Discard"
-
 
 Discard = _DiscardType()
 
@@ -642,7 +579,7 @@ Discard = _DiscardType()
 
 
 class _Decoratable:
-    # --
+    #--
 
     @classmethod
     def _apply_v_args(cls, visit_wrapper):
@@ -650,9 +587,10 @@ class _Decoratable:
         assert mro[0] is cls
         libmembers = {name for _cls in mro[1:] for name, _ in getmembers(_cls)}
         for name, value in getmembers(cls):
+
             ##
 
-            if name.startswith("_") or (name in libmembers and name not in cls.__dict__):
+            if name.startswith('_') or (name in libmembers and name not in cls.__dict__):
                 continue
             if not callable(value):
                 continue
@@ -670,10 +608,11 @@ class _Decoratable:
 
 
 class Transformer(_Decoratable, ABC, Generic[_Leaf_T, _Return_T]):
-    # --
-    __visit_tokens__ = True  ##
+    #--
+    __visit_tokens__ = True   ##
 
-    def __init__(self, visit_tokens: bool = True) -> None:
+
+    def __init__(self,  visit_tokens: bool=True) -> None:
         self.__visit_tokens__ = visit_tokens
 
     def _call_userfunc(self, tree, new_children=None):
@@ -686,7 +625,7 @@ class Transformer(_Decoratable, ABC, Generic[_Leaf_T, _Return_T]):
             return self.__default__(tree.data, children, tree.meta)
         else:
             try:
-                wrapper = getattr(f, "visit_wrapper", None)
+                wrapper = getattr(f, 'visit_wrapper', None)
                 if wrapper is not None:
                     return f.visit_wrapper(f, tree.data, children, tree.meta)
                 else:
@@ -726,32 +665,32 @@ class Transformer(_Decoratable, ABC, Generic[_Leaf_T, _Return_T]):
         return self._call_userfunc(tree, children)
 
     def transform(self, tree: Tree[_Leaf_T]) -> _Return_T:
-        # --
+        #--
         res = list(self._transform_children([tree]))
         if not res:
-            return None  ##
+            return None     ##
 
         assert len(res) == 1
         return res[0]
 
     def __mul__(
-        self: "Transformer[_Leaf_T, Tree[_Leaf_U]]",
-        other: "Union[Transformer[_Leaf_U, _Return_V], TransformerChain[_Leaf_U, _Return_V,]]",
-    ) -> "TransformerChain[_Leaf_T, _Return_V]":
-        # --
+            self: 'Transformer[_Leaf_T, Tree[_Leaf_U]]',
+            other: 'Union[Transformer[_Leaf_U, _Return_V], TransformerChain[_Leaf_U, _Return_V,]]'
+    ) -> 'TransformerChain[_Leaf_T, _Return_V]':
+        #--
         return TransformerChain(self, other)
 
     def __default__(self, data, children, meta):
-        # --
+        #--
         return Tree(data, children, meta)
 
     def __default_token__(self, token):
-        # --
+        #--
         return token
 
 
 def merge_transformers(base_transformer=None, **transformers_to_merge):
-    # --
+    #--
     if base_transformer is None:
         base_transformer = Transformer()
     for prefix, transformer in transformers_to_merge.items():
@@ -763,16 +702,15 @@ def merge_transformers(base_transformer=None, **transformers_to_merge):
                 continue
             prefixed_method = prefix + "__" + method_name
             if hasattr(base_transformer, prefixed_method):
-                raise AttributeError(
-                    "Cannot merge: method '%s' appears more than once" % prefixed_method
-                )
+                raise AttributeError("Cannot merge: method '%s' appears more than once" % prefixed_method)
 
             setattr(base_transformer, prefixed_method, method)
 
     return base_transformer
 
 
-class InlineTransformer(Transformer):  ##
+class InlineTransformer(Transformer):   ##
+
     def _call_userfunc(self, tree, new_children=None):
         ##
 
@@ -786,9 +724,10 @@ class InlineTransformer(Transformer):  ##
 
 
 class TransformerChain(Generic[_Leaf_T, _Return_T]):
-    transformers: "Tuple[Union[Transformer, TransformerChain], ...]"
 
-    def __init__(self, *transformers: "Union[Transformer, TransformerChain]") -> None:
+    transformers: 'Tuple[Union[Transformer, TransformerChain], ...]'
+
+    def __init__(self, *transformers: 'Union[Transformer, TransformerChain]') -> None:
         self.transformers = transformers
 
     def transform(self, tree: Tree[_Leaf_T]) -> _Return_T:
@@ -797,15 +736,16 @@ class TransformerChain(Generic[_Leaf_T, _Return_T]):
         return cast(_Return_T, tree)
 
     def __mul__(
-        self: "TransformerChain[_Leaf_T, Tree[_Leaf_U]]",
-        other: "Union[Transformer[_Leaf_U, _Return_V], TransformerChain[_Leaf_U, _Return_V]]",
-    ) -> "TransformerChain[_Leaf_T, _Return_V]":
+            self: 'TransformerChain[_Leaf_T, Tree[_Leaf_U]]',
+            other: 'Union[Transformer[_Leaf_U, _Return_V], TransformerChain[_Leaf_U, _Return_V]]'
+    ) -> 'TransformerChain[_Leaf_T, _Return_V]':
         return TransformerChain(*self.transformers + (other,))
 
 
 class Transformer_InPlace(Transformer[_Leaf_T, _Return_T]):
-    # --
-    def _transform_tree(self, tree):  ##
+    #--
+    def _transform_tree(self, tree):           ##
+
         return self._call_userfunc(tree)
 
     def transform(self, tree: Tree[_Leaf_T]) -> _Return_T:
@@ -816,7 +756,7 @@ class Transformer_InPlace(Transformer[_Leaf_T, _Return_T]):
 
 
 class Transformer_NonRecursive(Transformer[_Leaf_T, _Return_T]):
-    # --
+    #--
 
     def transform(self, tree: Tree[_Leaf_T]) -> _Return_T:
         ##
@@ -852,7 +792,7 @@ class Transformer_NonRecursive(Transformer[_Leaf_T, _Return_T]):
             else:
                 stack.append(x)
 
-        (result,) = stack  ##
+        result, = stack  ##
 
         ##
 
@@ -864,7 +804,7 @@ class Transformer_NonRecursive(Transformer[_Leaf_T, _Return_T]):
 
 
 class Transformer_InPlaceRecursive(Transformer):
-    # --
+    #--
     def _transform_tree(self, tree):
         tree.children = list(self._transform_children(tree.children))
         return self._call_userfunc(tree)
@@ -878,7 +818,7 @@ class VisitorBase:
         return getattr(self, tree.data, self.__default__)(tree)
 
     def __default__(self, tree):
-        # --
+        #--
         return tree
 
     def __class_getitem__(cls, _):
@@ -886,26 +826,26 @@ class VisitorBase:
 
 
 class Visitor(VisitorBase, ABC, Generic[_Leaf_T]):
-    # --
+    #--
 
     def visit(self, tree: Tree[_Leaf_T]) -> Tree[_Leaf_T]:
-        # --
+        #--
         for subtree in tree.iter_subtrees():
             self._call_userfunc(subtree)
         return tree
 
     def visit_topdown(self, tree: Tree[_Leaf_T]) -> Tree[_Leaf_T]:
-        # --
+        #--
         for subtree in tree.iter_subtrees_topdown():
             self._call_userfunc(subtree)
         return tree
 
 
 class Visitor_Recursive(VisitorBase, Generic[_Leaf_T]):
-    # --
+    #--
 
     def visit(self, tree: Tree[_Leaf_T]) -> Tree[_Leaf_T]:
-        # --
+        #--
         for child in tree.children:
             if isinstance(child, Tree):
                 self.visit(child)
@@ -913,8 +853,8 @@ class Visitor_Recursive(VisitorBase, Generic[_Leaf_T]):
         self._call_userfunc(tree)
         return tree
 
-    def visit_topdown(self, tree: Tree[_Leaf_T]) -> Tree[_Leaf_T]:
-        # --
+    def visit_topdown(self,tree: Tree[_Leaf_T]) -> Tree[_Leaf_T]:
+        #--
         self._call_userfunc(tree)
 
         for child in tree.children:
@@ -925,7 +865,7 @@ class Visitor_Recursive(VisitorBase, Generic[_Leaf_T]):
 
 
 class Interpreter(_Decoratable, ABC, Generic[_Leaf_T, _Return_T]):
-    # --
+    #--
 
     def visit(self, tree: Tree[_Leaf_T]) -> _Return_T:
         ##
@@ -938,16 +878,15 @@ class Interpreter(_Decoratable, ABC, Generic[_Leaf_T, _Return_T]):
 
     def _visit_tree(self, tree: Tree[_Leaf_T]):
         f = getattr(self, tree.data)
-        wrapper = getattr(f, "visit_wrapper", None)
+        wrapper = getattr(f, 'visit_wrapper', None)
         if wrapper is not None:
             return f.visit_wrapper(f, tree.data, tree.children, tree.meta)
         else:
             return f(tree)
 
     def visit_children(self, tree: Tree[_Leaf_T]) -> List:
-        return [
-            self._visit_tree(child) if isinstance(child, Tree) else child for child in tree.children
-        ]
+        return [self._visit_tree(child) if isinstance(child, Tree) else child
+                for child in tree.children]
 
     def __getattr__(self, name):
         return self.__default__
@@ -958,16 +897,13 @@ class Interpreter(_Decoratable, ABC, Generic[_Leaf_T, _Return_T]):
 
 _InterMethod = Callable[[Type[Interpreter], _Return_T], _R]
 
-
 def visit_children_decor(func: _InterMethod) -> _InterMethod:
-    # --
+    #--
     @wraps(func)
     def inner(cls, tree):
         values = cls.visit_children(tree)
         return func(cls, values)
-
     return inner
-
 
 ##
 
@@ -982,7 +918,7 @@ def _apply_v_args(obj, visit_wrapper):
 
 
 class _VArgsWrapper:
-    # --
+    #--
     base_func: Callable
 
     def __init__(self, func: Callable, visit_wrapper: Callable[[Callable, str, list, Any], Any]):
@@ -1018,27 +954,16 @@ class _VArgsWrapper:
 
 def _vargs_inline(f, _data, children, _meta):
     return f(*children)
-
-
 def _vargs_meta_inline(f, _data, children, meta):
     return f(meta, *children)
-
-
 def _vargs_meta(f, _data, children, meta):
     return f(meta, children)
-
-
 def _vargs_tree(f, data, children, meta):
     return f(Tree(data, children, meta))
 
 
-def v_args(
-    inline: bool = False,
-    meta: bool = False,
-    tree: bool = False,
-    wrapper: Optional[Callable] = None,
-) -> Callable[[_DECORATED], _DECORATED]:
-    # --
+def v_args(inline: bool = False, meta: bool = False, tree: bool = False, wrapper: Optional[Callable] = None) -> Callable[[_DECORATED], _DECORATED]:
+    #--
     if tree and (meta or inline):
         raise ValueError("Visitor functions cannot combine 'tree' with 'meta' or 'inline'.")
 
@@ -1060,15 +985,15 @@ def v_args(
 
     def _visitor_args_dec(obj):
         return _apply_v_args(obj, func)
-
     return _visitor_args_dec
+
 
 
 TOKEN_DEFAULT_PRIORITY = 0
 
 
 class Symbol(Serialize):
-    __slots__ = ("name",)
+    __slots__ = ('name',)
 
     name: str
     is_term: ClassVar[bool] = NotImplemented
@@ -1087,7 +1012,7 @@ class Symbol(Serialize):
         return hash(self.name)
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.name)
+        return '%s(%r)' % (type(self).__name__, self.name)
 
     fullrepr = property(__repr__)
 
@@ -1096,7 +1021,7 @@ class Symbol(Serialize):
 
 
 class Terminal(Symbol):
-    __serialize_fields__ = "name", "filter_out"
+    __serialize_fields__ = 'name', 'filter_out'
 
     is_term: ClassVar[bool] = True
 
@@ -1106,26 +1031,20 @@ class Terminal(Symbol):
 
     @property
     def fullrepr(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.name, self.filter_out)
+        return '%s(%r, %r)' % (type(self).__name__, self.name, self.filter_out)
 
     def renamed(self, f):
         return type(self)(f(self.name), self.filter_out)
 
 
 class NonTerminal(Symbol):
-    __serialize_fields__ = ("name",)
+    __serialize_fields__ = 'name',
 
     is_term: ClassVar[bool] = False
 
 
 class RuleOptions(Serialize):
-    __serialize_fields__ = (
-        "keep_all_tokens",
-        "expand1",
-        "priority",
-        "template_source",
-        "empty_indices",
-    )
+    __serialize_fields__ = 'keep_all_tokens', 'expand1', 'priority', 'template_source', 'empty_indices'
 
     keep_all_tokens: bool
     expand1: bool
@@ -1133,14 +1052,7 @@ class RuleOptions(Serialize):
     template_source: Optional[str]
     empty_indices: Tuple[bool, ...]
 
-    def __init__(
-        self,
-        keep_all_tokens: bool = False,
-        expand1: bool = False,
-        priority: Optional[int] = None,
-        template_source: Optional[str] = None,
-        empty_indices: Tuple[bool, ...] = (),
-    ) -> None:
+    def __init__(self, keep_all_tokens: bool=False, expand1: bool=False, priority: Optional[int]=None, template_source: Optional[str]=None, empty_indices: Tuple[bool, ...]=()) -> None:
         self.keep_all_tokens = keep_all_tokens
         self.expand1 = expand1
         self.priority = priority
@@ -1148,19 +1060,19 @@ class RuleOptions(Serialize):
         self.empty_indices = empty_indices
 
     def __repr__(self):
-        return "RuleOptions(%r, %r, %r, %r)" % (
+        return 'RuleOptions(%r, %r, %r, %r)' % (
             self.keep_all_tokens,
             self.expand1,
             self.priority,
-            self.template_source,
+            self.template_source
         )
 
 
 class Rule(Serialize):
-    # --
-    __slots__ = ("origin", "expansion", "alias", "options", "order", "_hash")
+    #--
+    __slots__ = ('origin', 'expansion', 'alias', 'options', 'order', '_hash')
 
-    __serialize_fields__ = "origin", "expansion", "order", "alias", "options"
+    __serialize_fields__ = 'origin', 'expansion', 'order', 'alias', 'options'
     __serialize_namespace__ = Terminal, NonTerminal, RuleOptions
 
     origin: NonTerminal
@@ -1170,14 +1082,8 @@ class Rule(Serialize):
     options: RuleOptions
     _hash: int
 
-    def __init__(
-        self,
-        origin: NonTerminal,
-        expansion: Sequence[Symbol],
-        order: int = 0,
-        alias: Optional[str] = None,
-        options: Optional[RuleOptions] = None,
-    ):
+    def __init__(self, origin: NonTerminal, expansion: Sequence[Symbol],
+                 order: int=0, alias: Optional[str]=None, options: Optional[RuleOptions]=None):
         self.origin = origin
         self.expansion = expansion
         self.alias = alias
@@ -1189,18 +1095,10 @@ class Rule(Serialize):
         self._hash = hash((self.origin, tuple(self.expansion)))
 
     def __str__(self):
-        return "<%s : %s>" % (
-            self.origin.name,
-            " ".join(x.name for x in self.expansion),
-        )
+        return '<%s : %s>' % (self.origin.name, ' '.join(x.name for x in self.expansion))
 
     def __repr__(self):
-        return "Rule(%r, %r, %r, %r)" % (
-            self.origin,
-            self.expansion,
-            self.alias,
-            self.options,
-        )
+        return 'Rule(%r, %r, %r, %r)' % (self.origin, self.expansion, self.alias, self.options)
 
     def __hash__(self):
         return self._hash
@@ -1211,16 +1109,17 @@ class Rule(Serialize):
         return self.origin == other.origin and self.expansion == other.expansion
 
 
+
 from copy import copy
 
 try:  ##
+
     has_interegular = bool(interegular)
 except NameError:
     has_interegular = False
 
-
 class Pattern(Serialize, ABC):
-    # --
+    #--
 
     value: str
     flags: Collection[str]
@@ -1259,12 +1158,12 @@ class Pattern(Serialize, ABC):
 
     def _get_flags(self, value):
         for f in self.flags:
-            value = "(?%s:%s)" % (f, value)
+            value = ('(?%s:%s)' % (f, value))
         return value
 
 
 class PatternStr(Pattern):
-    __serialize_fields__ = "value", "flags", "raw"
+    __serialize_fields__ = 'value', 'flags', 'raw'
 
     type: ClassVar[str] = "str"
 
@@ -1281,7 +1180,7 @@ class PatternStr(Pattern):
 
 
 class PatternRE(Pattern):
-    __serialize_fields__ = "value", "flags", "raw", "_width"
+    __serialize_fields__ = 'value', 'flags', 'raw', '_width'
 
     type: ClassVar[str] = "re"
 
@@ -1289,7 +1188,6 @@ class PatternRE(Pattern):
         return self._get_flags(self.value)
 
     _width = None
-
     def _get_width(self):
         if self._width is None:
             self._width = get_regexp_width(self.to_regexp())
@@ -1305,8 +1203,8 @@ class PatternRE(Pattern):
 
 
 class TerminalDef(Serialize):
-    # --
-    __serialize_fields__ = "name", "pattern", "priority"
+    #--
+    __serialize_fields__ = 'name', 'pattern', 'priority'
     __serialize_namespace__ = PatternStr, PatternRE
 
     name: str
@@ -1320,32 +1218,22 @@ class TerminalDef(Serialize):
         self.priority = priority
 
     def __repr__(self):
-        return "%s(%r, %r)" % (type(self).__name__, self.name, self.pattern)
+        return '%s(%r, %r)' % (type(self).__name__, self.name, self.pattern)
 
     def user_repr(self) -> str:
-        if self.name.startswith("__"):  ##
+        if self.name.startswith('__'):  ##
+
             return self.pattern.raw or self.name
         else:
             return self.name
 
-
-_T = TypeVar("_T", bound="Token")
-
+_T = TypeVar('_T', bound="Token")
 
 class Token(str):
-    # --
-    __slots__ = (
-        "type",
-        "start_pos",
-        "value",
-        "line",
-        "column",
-        "end_line",
-        "end_column",
-        "end_pos",
-    )
+    #--
+    __slots__ = ('type', 'start_pos', 'value', 'line', 'column', 'end_line', 'end_column', 'end_pos')
 
-    __match_args__ = ("type", "value")
+    __match_args__ = ('type', 'value')
 
     type: str
     start_pos: Optional[int]
@@ -1356,31 +1244,33 @@ class Token(str):
     end_column: Optional[int]
     end_pos: Optional[int]
 
-    @overload
-    def __new__(
-        cls,
-        type: str,
-        value: Any,
-        start_pos: Optional[int] = None,
-        line: Optional[int] = None,
-        column: Optional[int] = None,
-        end_line: Optional[int] = None,
-        end_column: Optional[int] = None,
-        end_pos: Optional[int] = None,
-    ) -> "Token": ...
 
     @overload
     def __new__(
-        cls,
-        type_: str,
-        value: Any,
-        start_pos: Optional[int] = None,
-        line: Optional[int] = None,
-        column: Optional[int] = None,
-        end_line: Optional[int] = None,
-        end_column: Optional[int] = None,
-        end_pos: Optional[int] = None,
-    ) -> "Token": ...
+            cls,
+            type: str,
+            value: Any,
+            start_pos: Optional[int] = None,
+            line: Optional[int] = None,
+            column: Optional[int] = None,
+            end_line: Optional[int] = None,
+            end_column: Optional[int] = None,
+            end_pos: Optional[int] = None
+    ) -> 'Token':
+        ...
+
+    @overload
+    def __new__(
+            cls,
+            type_: str,
+            value: Any,
+            start_pos: Optional[int] = None,
+            line: Optional[int] = None,
+            column: Optional[int] = None,
+            end_line: Optional[int] = None,
+            end_column: Optional[int] = None,
+            end_pos: Optional[int] = None
+    ) -> 'Token':        ...
 
     def __new__(cls, *args, **kwargs):
         if "type_" in kwargs:
@@ -1392,18 +1282,9 @@ class Token(str):
 
         return cls._future_new(*args, **kwargs)
 
+
     @classmethod
-    def _future_new(
-        cls,
-        type,
-        value,
-        start_pos=None,
-        line=None,
-        column=None,
-        end_line=None,
-        end_column=None,
-        end_pos=None,
-    ):
+    def _future_new(cls, type, value, start_pos=None, line=None, column=None, end_line=None, end_column=None, end_pos=None):
         inst = super(Token, cls).__new__(cls, value)
 
         inst.type = type
@@ -1417,10 +1298,12 @@ class Token(str):
         return inst
 
     @overload
-    def update(self, type: Optional[str] = None, value: Optional[Any] = None) -> "Token": ...
+    def update(self, type: Optional[str] = None, value: Optional[Any] = None) -> 'Token':
+        ...
 
     @overload
-    def update(self, type_: Optional[str] = None, value: Optional[Any] = None) -> "Token": ...
+    def update(self, type_: Optional[str] = None, value: Optional[Any] = None) -> 'Token':
+        ...
 
     def update(self, *args, **kwargs):
         if "type_" in kwargs:
@@ -1432,34 +1315,22 @@ class Token(str):
 
         return self._future_update(*args, **kwargs)
 
-    def _future_update(self, type: Optional[str] = None, value: Optional[Any] = None) -> "Token":
+    def _future_update(self, type: Optional[str] = None, value: Optional[Any] = None) -> 'Token':
         return Token.new_borrow_pos(
             type if type is not None else self.type,
             value if value is not None else self.value,
-            self,
+            self
         )
 
     @classmethod
-    def new_borrow_pos(cls: Type[_T], type_: str, value: Any, borrow_t: "Token") -> _T:
-        return cls(
-            type_,
-            value,
-            borrow_t.start_pos,
-            borrow_t.line,
-            borrow_t.column,
-            borrow_t.end_line,
-            borrow_t.end_column,
-            borrow_t.end_pos,
-        )
+    def new_borrow_pos(cls: Type[_T], type_: str, value: Any, borrow_t: 'Token') -> _T:
+        return cls(type_, value, borrow_t.start_pos, borrow_t.line, borrow_t.column, borrow_t.end_line, borrow_t.end_column, borrow_t.end_pos)
 
     def __reduce__(self):
-        return (
-            self.__class__,
-            (self.type, self.value, self.start_pos, self.line, self.column),
-        )
+        return (self.__class__, (self.type, self.value, self.start_pos, self.line, self.column))
 
     def __repr__(self):
-        return "Token(%r, %r)" % (self.type, self.value)
+        return 'Token(%r, %r)' % (self.type, self.value)
 
     def __deepcopy__(self, memo):
         return Token(self.type, self.value, self.start_pos, self.line, self.column)
@@ -1474,9 +1345,9 @@ class Token(str):
 
 
 class LineCounter:
-    # --
+    #--
 
-    __slots__ = "char_pos", "line", "column", "line_start_pos", "newline_char"
+    __slots__ = 'char_pos', 'line', 'column', 'line_start_pos', 'newline_char'
 
     def __init__(self, newline_char):
         self.newline_char = newline_char
@@ -1492,7 +1363,7 @@ class LineCounter:
         return self.char_pos == other.char_pos and self.newline_char == other.newline_char
 
     def feed(self, token: Token, test_newline=True):
-        # --
+        #--
         if test_newline:
             newlines = token.count(self.newline_char)
             if newlines:
@@ -1530,7 +1401,6 @@ def _get_match(re_, regexp, s, flags):
     if m:
         return m.group(0)
 
-
 def _create_unless(terminals, g_regex_flags, re_, use_bytes):
     tokens_by_type = classify(terminals, lambda t: type(t.pattern))
     assert len(tokens_by_type) <= 2, tokens_by_type.keys()
@@ -1547,9 +1417,7 @@ def _create_unless(terminals, g_regex_flags, re_, use_bytes):
                 if strtok.pattern.flags <= retok.pattern.flags:
                     embedded_strs.add(strtok)
         if unless:
-            callback[retok.name] = UnlessCallback(
-                Scanner(unless, g_regex_flags, re_, match_whole=True, use_bytes=use_bytes)
-            )
+            callback[retok.name] = UnlessCallback(Scanner(unless, g_regex_flags, re_, match_whole=True, use_bytes=use_bytes))
 
     new_terminals = [t for t in terminals if t not in embedded_strs]
     return new_terminals, callback
@@ -1574,18 +1442,16 @@ class Scanner:
 
         ##
 
-        postfix = "$" if self.match_whole else ""
+        postfix = '$' if self.match_whole else ''
         mres = []
         while terminals:
-            pattern = "|".join(
-                "(?P<%s>%s)" % (t.name, t.pattern.to_regexp() + postfix)
-                for t in terminals[:max_size]
-            )
+            pattern = u'|'.join(u'(?P<%s>%s)' % (t.name, t.pattern.to_regexp() + postfix) for t in terminals[:max_size])
             if self.use_bytes:
-                pattern = pattern.encode("latin-1")
+                pattern = pattern.encode('latin-1')
             try:
                 mre = self.re_.compile(pattern, self.g_regex_flags)
             except AssertionError:  ##
+
                 return self._build_mres(terminals, max_size // 2)
 
             mres.append(mre)
@@ -1600,52 +1466,43 @@ class Scanner:
 
 
 def _regexp_has_newline(r: str):
-    # --
-    return "\n" in r or "\\n" in r or "\\s" in r or "[^" in r or ("(?s" in r and "." in r)
+    #--
+    return '\n' in r or '\\n' in r or '\\s' in r or '[^' in r or ('(?s' in r and '.' in r)
 
 
 class LexerState:
-    # --
+    #--
 
-    __slots__ = "text", "line_ctr", "last_token"
+    __slots__ = 'text', 'line_ctr', 'last_token'
 
     text: str
     line_ctr: LineCounter
     last_token: Optional[Token]
 
-    def __init__(
-        self,
-        text: str,
-        line_ctr: Optional[LineCounter] = None,
-        last_token: Optional[Token] = None,
-    ):
+    def __init__(self, text: str, line_ctr: Optional[LineCounter]=None, last_token: Optional[Token]=None):
         self.text = text
-        self.line_ctr = line_ctr or LineCounter(b"\n" if isinstance(text, bytes) else "\n")
+        self.line_ctr = line_ctr or LineCounter(b'\n' if isinstance(text, bytes) else '\n')
         self.last_token = last_token
 
     def __eq__(self, other):
         if not isinstance(other, LexerState):
             return NotImplemented
 
-        return (
-            self.text is other.text
-            and self.line_ctr == other.line_ctr
-            and self.last_token == other.last_token
-        )
+        return self.text is other.text and self.line_ctr == other.line_ctr and self.last_token == other.last_token
 
     def __copy__(self):
         return type(self)(self.text, copy(self.line_ctr), self.last_token)
 
 
 class LexerThread:
-    # --
+    #--
 
-    def __init__(self, lexer: "Lexer", lexer_state: LexerState):
+    def __init__(self, lexer: 'Lexer', lexer_state: LexerState):
         self.lexer = lexer
         self.state = lexer_state
 
     @classmethod
-    def from_text(cls, lexer: "Lexer", text: str) -> "LexerThread":
+    def from_text(cls, lexer: 'Lexer', text: str) -> 'LexerThread':
         return cls(lexer, LexerState(text))
 
     def lex(self, parser_state):
@@ -1659,24 +1516,18 @@ class LexerThread:
 
 _Callback = Callable[[Token], Token]
 
-
 class Lexer(ABC):
-    # --
+    #--
     @abstractmethod
     def lex(self, lexer_state: LexerState, parser_state: Any) -> Iterator[Token]:
         return NotImplemented
 
     def make_lexer_state(self, text):
-        # --
+        #--
         return LexerState(text)
 
 
-def _check_regex_collisions(
-    terminal_to_regexp: Dict[TerminalDef, str],
-    comparator,
-    strict_mode,
-    max_collisions_to_show=8,
-):
+def _check_regex_collisions(terminal_to_regexp: Dict[TerminalDef, str], comparator, strict_mode, max_collisions_to_show=8):
     if not comparator:
         comparator = interegular.Comparator.from_regexes(terminal_to_regexp)
 
@@ -1708,11 +1559,7 @@ def _check_regex_collisions(
                 example = "No example could be found fast enough. However, the collision does still exists"
             if strict_mode:
                 raise LexError(f"{message}\n{example}")
-            logger.warning(
-                "%s The lexer will choose between them arbitrarily.\n%s",
-                message,
-                example,
-            )
+            logger.warning("%s The lexer will choose between them arbitrarily.\n%s", message, example)
             if comparator.count_marked_pairs() >= max_collisions_to_show:
                 logger.warning("Found 8 regex collisions, will not check for more.")
                 return
@@ -1722,10 +1569,12 @@ class AbstractBasicLexer(Lexer):
     terminals_by_name: Dict[str, TerminalDef]
 
     @abstractmethod
-    def __init__(self, conf: "LexerConf", comparator=None) -> None: ...
+    def __init__(self, conf: 'LexerConf', comparator=None) -> None:
+        ...
 
     @abstractmethod
-    def next_token(self, lex_state: LexerState, parser_state: Any = None) -> Token: ...
+    def next_token(self, lex_state: LexerState, parser_state: Any = None) -> Token:
+        ...
 
     def lex(self, state: LexerState, parser_state: Any) -> Iterator[Token]:
         with suppress(EOFError):
@@ -1741,7 +1590,7 @@ class BasicLexer(AbstractBasicLexer):
     callback: Dict[str, _Callback]
     re: ModuleType
 
-    def __init__(self, conf: "LexerConf", comparator=None) -> None:
+    def __init__(self, conf: 'LexerConf', comparator=None) -> None:
         terminals = list(conf.terminals)
         assert all(isinstance(t, TerminalDef) for t in terminals), terminals
 
@@ -1759,40 +1608,24 @@ class BasicLexer(AbstractBasicLexer):
                     raise LexError("Cannot compile token %s: %s" % (t.name, t.pattern))
 
                 if t.pattern.min_width == 0:
-                    raise LexError(
-                        "Lexer does not allow zero-width terminals. (%s: %s)" % (t.name, t.pattern)
-                    )
+                    raise LexError("Lexer does not allow zero-width terminals. (%s: %s)" % (t.name, t.pattern))
                 if t.pattern.type == "re":
                     terminal_to_regexp[t] = regexp
 
             if not (set(conf.ignore) <= {t.name for t in terminals}):
-                raise LexError(
-                    "Ignore terminals are not defined: %s"
-                    % (set(conf.ignore) - {t.name for t in terminals})
-                )
+                raise LexError("Ignore terminals are not defined: %s" % (set(conf.ignore) - {t.name for t in terminals}))
 
             if has_interegular:
                 _check_regex_collisions(terminal_to_regexp, comparator, conf.strict)
             elif conf.strict:
-                raise LexError(
-                    "interegular must be installed for strict mode. Use `pip install 'lark[interegular]'`."
-                )
+                raise LexError("interegular must be installed for strict mode. Use `pip install 'lark[interegular]'`.")
 
         ##
 
-        self.newline_types = frozenset(
-            t.name for t in terminals if _regexp_has_newline(t.pattern.to_regexp())
-        )
+        self.newline_types = frozenset(t.name for t in terminals if _regexp_has_newline(t.pattern.to_regexp()))
         self.ignore_types = frozenset(conf.ignore)
 
-        terminals.sort(
-            key=lambda x: (
-                -x.priority,
-                -x.pattern.max_width,
-                -len(x.pattern.value),
-                x.name,
-            )
-        )
+        terminals.sort(key=lambda x: (-x.priority, -x.pattern.max_width, -len(x.pattern.value), x.name))
         self.terminals = terminals
         self.user_callbacks = conf.callbacks
         self.g_regex_flags = conf.g_regex_flags
@@ -1802,9 +1635,7 @@ class BasicLexer(AbstractBasicLexer):
         self._scanner = None
 
     def _build_scanner(self):
-        terminals, self.callback = _create_unless(
-            self.terminals, self.g_regex_flags, self.re, self.use_bytes
-        )
+        terminals, self.callback = _create_unless(self.terminals, self.g_regex_flags, self.re, self.use_bytes)
         assert all(self.callback.values())
 
         for type_, f in self.user_callbacks.items():
@@ -1834,16 +1665,9 @@ class BasicLexer(AbstractBasicLexer):
                 allowed = self.scanner.allowed_types - self.ignore_types
                 if not allowed:
                     allowed = {"<END-OF-FILE>"}
-                raise UnexpectedCharacters(
-                    lex_state.text,
-                    line_ctr.char_pos,
-                    line_ctr.line,
-                    line_ctr.column,
-                    allowed=allowed,
-                    token_history=lex_state.last_token and [lex_state.last_token],
-                    state=parser_state,
-                    terminals_by_name=self.terminals_by_name,
-                )
+                raise UnexpectedCharacters(lex_state.text, line_ctr.char_pos, line_ctr.line, line_ctr.column,
+                                           allowed=allowed, token_history=lex_state.last_token and [lex_state.last_token],
+                                           state=parser_state, terminals_by_name=self.terminals_by_name)
 
             value, type_ = res
 
@@ -1875,12 +1699,7 @@ class ContextualLexer(Lexer):
 
     BasicLexer: Type[AbstractBasicLexer] = BasicLexer
 
-    def __init__(
-        self,
-        conf: "LexerConf",
-        states: Dict[int, Collection[str]],
-        always_accept: Collection[str] = (),
-    ) -> None:
+    def __init__(self, conf: 'LexerConf', states: Dict[int, Collection[str]], always_accept: Collection[str]=()) -> None:
         terminals = list(conf.terminals)
         terminals_by_name = conf.terminals_by_name
 
@@ -1888,9 +1707,7 @@ class ContextualLexer(Lexer):
         trad_conf.terminals = terminals
 
         if has_interegular and not conf.skip_validation:
-            comparator = interegular.Comparator.from_regexes(
-                {t: t.pattern.to_regexp() for t in terminals}
-            )
+            comparator = interegular.Comparator.from_regexes({t: t.pattern.to_regexp() for t in terminals})
         else:
             comparator = None
         lexer_by_tokens: Dict[FrozenSet[str], AbstractBasicLexer] = {}
@@ -1902,9 +1719,7 @@ class ContextualLexer(Lexer):
             except KeyError:
                 accepts = set(accepts) | set(conf.ignore) | set(always_accept)
                 lexer_conf = copy(trad_conf)
-                lexer_conf.terminals = [
-                    terminals_by_name[n] for n in accepts if n in terminals_by_name
-                ]
+                lexer_conf.terminals = [terminals_by_name[n] for n in accepts if n in terminals_by_name]
                 lexer = self.BasicLexer(lexer_conf, comparator)
                 lexer_by_tokens[key] = lexer
 
@@ -1915,7 +1730,7 @@ class ContextualLexer(Lexer):
 
         self.root_lexer = self.BasicLexer(trad_conf, comparator)
 
-    def lex(self, lexer_state: LexerState, parser_state: "ParserState") -> Iterator[Token]:
+    def lex(self, lexer_state: LexerState, parser_state: 'ParserState') -> Iterator[Token]:
         try:
             while True:
                 lexer = self.lexers[parser_state.position]
@@ -1931,39 +1746,26 @@ class ContextualLexer(Lexer):
                 last_token = lexer_state.last_token  ##
 
                 token = self.root_lexer.next_token(lexer_state, parser_state)
-                raise UnexpectedToken(
-                    token,
-                    e.allowed,
-                    state=parser_state,
-                    token_history=[last_token],
-                    terminals_by_name=self.root_lexer.terminals_by_name,
-                )
+                raise UnexpectedToken(token, e.allowed, state=parser_state, token_history=[last_token], terminals_by_name=self.root_lexer.terminals_by_name)
             except UnexpectedCharacters:
                 raise e  ##
 
 
-_ParserArgType: "TypeAlias" = 'Literal["earley", "lalr", "cyk", "auto"]'
-_LexerArgType: "TypeAlias" = (
-    'Union[Literal["auto", "basic", "contextual", "dynamic", "dynamic_complete"], Type[Lexer]]'
-)
+
+
+_ParserArgType: 'TypeAlias' = 'Literal["earley", "lalr", "cyk", "auto"]'
+_LexerArgType: 'TypeAlias' = 'Union[Literal["auto", "basic", "contextual", "dynamic", "dynamic_complete"], Type[Lexer]]'
 _LexerCallback = Callable[[Token], Token]
 ParserCallbacks = Dict[str, Callable]
 
-
 class LexerConf(Serialize):
-    __serialize_fields__ = (
-        "terminals",
-        "ignore",
-        "g_regex_flags",
-        "use_bytes",
-        "lexer_type",
-    )
-    __serialize_namespace__ = (TerminalDef,)
+    __serialize_fields__ = 'terminals', 'ignore', 'g_regex_flags', 'use_bytes', 'lexer_type'
+    __serialize_namespace__ = TerminalDef,
 
     terminals: Collection[TerminalDef]
     re_module: ModuleType
     ignore: Collection[str]
-    postlex: "Optional[PostLex]"
+    postlex: 'Optional[PostLex]'
     callbacks: Dict[str, _LexerCallback]
     g_regex_flags: int
     skip_validation: bool
@@ -1971,18 +1773,8 @@ class LexerConf(Serialize):
     lexer_type: Optional[_LexerArgType]
     strict: bool
 
-    def __init__(
-        self,
-        terminals: Collection[TerminalDef],
-        re_module: ModuleType,
-        ignore: Collection[str] = (),
-        postlex: "Optional[PostLex]" = None,
-        callbacks: Optional[Dict[str, _LexerCallback]] = None,
-        g_regex_flags: int = 0,
-        skip_validation: bool = False,
-        use_bytes: bool = False,
-        strict: bool = False,
-    ):
+    def __init__(self, terminals: Collection[TerminalDef], re_module: ModuleType, ignore: Collection[str]=(), postlex: 'Optional[PostLex]'=None,
+                 callbacks: Optional[Dict[str, _LexerCallback]]=None, g_regex_flags: int=0, skip_validation: bool=False, use_bytes: bool=False, strict: bool=False):
         self.terminals = terminals
         self.terminals_by_name = {t.name: t for t in self.terminals}
         assert len(self.terminals) == len(self.terminals_by_name)
@@ -2011,16 +1803,15 @@ class LexerConf(Serialize):
             deepcopy(self.use_bytes, memo),
         )
 
-
 class ParserConf(Serialize):
-    __serialize_fields__ = "rules", "start", "parser_type"
+    __serialize_fields__ = 'rules', 'start', 'parser_type'
 
-    rules: List["Rule"]
+    rules: List['Rule']
     callbacks: ParserCallbacks
     start: List[str]
     parser_type: _ParserArgType
 
-    def __init__(self, rules: List["Rule"], callbacks: ParserCallbacks, start: List[str]):
+    def __init__(self, rules: List['Rule'], callbacks: ParserCallbacks, start: List[str]):
         assert isinstance(start, list)
         self.rules = rules
         self.callbacks = callbacks
@@ -2042,6 +1833,7 @@ class ExpandSingleChild:
             return self.node_builder(children)
 
 
+
 class PropagatePositions:
     def __init__(self, node_builder, node_filter=None):
         self.node_builder = node_builder
@@ -2059,47 +1851,34 @@ class PropagatePositions:
 
             ##
 
+
             res_meta = res.meta
 
             first_meta = self._pp_get_meta(children)
             if first_meta is not None:
-                if not hasattr(res_meta, "line"):
+                if not hasattr(res_meta, 'line'):
                     ##
 
-                    res_meta.line = getattr(first_meta, "container_line", first_meta.line)
-                    res_meta.column = getattr(first_meta, "container_column", first_meta.column)
-                    res_meta.start_pos = getattr(
-                        first_meta, "container_start_pos", first_meta.start_pos
-                    )
+                    res_meta.line = getattr(first_meta, 'container_line', first_meta.line)
+                    res_meta.column = getattr(first_meta, 'container_column', first_meta.column)
+                    res_meta.start_pos = getattr(first_meta, 'container_start_pos', first_meta.start_pos)
                     res_meta.empty = False
 
-                res_meta.container_line = getattr(first_meta, "container_line", first_meta.line)
-                res_meta.container_column = getattr(
-                    first_meta, "container_column", first_meta.column
-                )
-                res_meta.container_start_pos = getattr(
-                    first_meta, "container_start_pos", first_meta.start_pos
-                )
+                res_meta.container_line = getattr(first_meta, 'container_line', first_meta.line)
+                res_meta.container_column = getattr(first_meta, 'container_column', first_meta.column)
+                res_meta.container_start_pos = getattr(first_meta, 'container_start_pos', first_meta.start_pos)
 
             last_meta = self._pp_get_meta(reversed(children))
             if last_meta is not None:
-                if not hasattr(res_meta, "end_line"):
-                    res_meta.end_line = getattr(last_meta, "container_end_line", last_meta.end_line)
-                    res_meta.end_column = getattr(
-                        last_meta, "container_end_column", last_meta.end_column
-                    )
-                    res_meta.end_pos = getattr(last_meta, "container_end_pos", last_meta.end_pos)
+                if not hasattr(res_meta, 'end_line'):
+                    res_meta.end_line = getattr(last_meta, 'container_end_line', last_meta.end_line)
+                    res_meta.end_column = getattr(last_meta, 'container_end_column', last_meta.end_column)
+                    res_meta.end_pos = getattr(last_meta, 'container_end_pos', last_meta.end_pos)
                     res_meta.empty = False
 
-                res_meta.container_end_line = getattr(
-                    last_meta, "container_end_line", last_meta.end_line
-                )
-                res_meta.container_end_column = getattr(
-                    last_meta, "container_end_column", last_meta.end_column
-                )
-                res_meta.container_end_pos = getattr(
-                    last_meta, "container_end_pos", last_meta.end_pos
-                )
+                res_meta.container_end_line = getattr(last_meta, 'container_end_line', last_meta.end_line)
+                res_meta.container_end_column = getattr(last_meta, 'container_end_column', last_meta.end_column)
+                res_meta.container_end_pos = getattr(last_meta, 'container_end_pos', last_meta.end_pos)
 
         return res
 
@@ -2112,9 +1891,8 @@ class PropagatePositions:
                     return c.meta
             elif isinstance(c, Token):
                 return c
-            elif hasattr(c, "__lark_meta__"):
+            elif hasattr(c, '__lark_meta__'):
                 return c.__lark_meta__()
-
 
 def make_propagate_positions(option):
     if callable(option):
@@ -2124,7 +1902,7 @@ def make_propagate_positions(option):
     elif option is False:
         return None
 
-    raise ConfigurationError("Invalid option for propagate_positions: %r" % option)
+    raise ConfigurationError('Invalid option for propagate_positions: %r' % option)
 
 
 class ChildFilter:
@@ -2151,7 +1929,7 @@ class ChildFilter:
 
 
 class ChildFilterLALR(ChildFilter):
-    # --
+    #--
 
     def __call__(self, children):
         filtered = []
@@ -2161,7 +1939,8 @@ class ChildFilterLALR(ChildFilter):
             if to_expand:
                 if filtered:
                     filtered += children[i].children
-                else:  ##
+                else:   ##
+
                     filtered = children[i].children
             else:
                 filtered.append(children[i])
@@ -2173,7 +1952,7 @@ class ChildFilterLALR(ChildFilter):
 
 
 class ChildFilterLALR_NoPlaceholders(ChildFilter):
-    # --
+    #--
     def __init__(self, to_include, node_builder):
         self.node_builder = node_builder
         self.to_include = to_include
@@ -2184,7 +1963,8 @@ class ChildFilterLALR_NoPlaceholders(ChildFilter):
             if to_expand:
                 if filtered:
                     filtered += children[i].children
-                else:  ##
+                else:   ##
+
                     filtered = children[i].children
             else:
                 filtered.append(children[i])
@@ -2192,7 +1972,7 @@ class ChildFilterLALR_NoPlaceholders(ChildFilter):
 
 
 def _should_expand(sym):
-    return not sym.is_term and sym.name.startswith("_")
+    return not sym.is_term and sym.name.startswith('_')
 
 
 def maybe_create_child_filter(expansion, keep_all_tokens, ambiguous, _empty_indices: List[bool]):
@@ -2200,11 +1980,11 @@ def maybe_create_child_filter(expansion, keep_all_tokens, ambiguous, _empty_indi
 
     if _empty_indices:
         assert _empty_indices.count(False) == len(expansion)
-        s = "".join(str(int(b)) for b in _empty_indices)
-        empty_indices = [len(ones) for ones in s.split("0")]
-        assert len(empty_indices) == len(expansion) + 1, (empty_indices, len(expansion))
+        s = ''.join(str(int(b)) for b in _empty_indices)
+        empty_indices = [len(ones) for ones in s.split('0')]
+        assert len(empty_indices) == len(expansion)+1, (empty_indices, len(expansion))
     else:
-        empty_indices = [0] * (len(expansion) + 1)
+        empty_indices = [0] * (len(expansion)+1)
 
     to_include = []
     nones_to_add = 0
@@ -2216,21 +1996,17 @@ def maybe_create_child_filter(expansion, keep_all_tokens, ambiguous, _empty_indi
 
     nones_to_add += empty_indices[len(expansion)]
 
-    if (
-        _empty_indices
-        or len(to_include) < len(expansion)
-        or any(to_expand for i, to_expand, _ in to_include)
-    ):
+    if _empty_indices or len(to_include) < len(expansion) or any(to_expand for i, to_expand,_ in to_include):
         if _empty_indices or ambiguous:
             return partial(ChildFilter if ambiguous else ChildFilterLALR, to_include, nones_to_add)
         else:
             ##
 
-            return partial(ChildFilterLALR_NoPlaceholders, [(i, x) for i, x, _ in to_include])
+            return partial(ChildFilterLALR_NoPlaceholders, [(i, x) for i,x,_ in to_include])
 
 
 class AmbiguousExpander:
-    # --
+    #--
     def __init__(self, to_expand, tree_class, node_builder):
         self.node_builder = node_builder
         self.tree_class = tree_class
@@ -2238,7 +2014,7 @@ class AmbiguousExpander:
 
     def __call__(self, children):
         def _is_ambig_tree(t):
-            return hasattr(t, "data") and t.data == "_ambig"
+            return hasattr(t, 'data') and t.data == '_ambig'
 
         ##
 
@@ -2254,29 +2030,24 @@ class AmbiguousExpander:
                 if i in self.to_expand:
                     ambiguous.append(i)
 
-                child.expand_kids_by_data("_ambig")
+                child.expand_kids_by_data('_ambig')
 
         if not ambiguous:
             return self.node_builder(children)
 
-        expand = [
-            child.children if i in ambiguous else (child,) for i, child in enumerate(children)
-        ]
-        return self.tree_class("_ambig", [self.node_builder(list(f)) for f in product(*expand)])
+        expand = [child.children if i in ambiguous else (child,) for i, child in enumerate(children)]
+        return self.tree_class('_ambig', [self.node_builder(list(f)) for f in product(*expand)])
 
 
 def maybe_create_ambiguous_expander(tree_class, expansion, keep_all_tokens):
-    to_expand = [
-        i
-        for i, sym in enumerate(expansion)
-        if keep_all_tokens or ((not (sym.is_term and sym.filter_out)) and _should_expand(sym))
-    ]
+    to_expand = [i for i, sym in enumerate(expansion)
+                 if keep_all_tokens or ((not (sym.is_term and sym.filter_out)) and _should_expand(sym))]
     if to_expand:
         return partial(AmbiguousExpander, to_expand, tree_class)
 
 
 class AmbiguousIntermediateExpander:
-    # --
+    #--
 
     def __init__(self, tree_class, node_builder):
         self.node_builder = node_builder
@@ -2284,10 +2055,10 @@ class AmbiguousIntermediateExpander:
 
     def __call__(self, children):
         def _is_iambig_tree(child):
-            return hasattr(child, "data") and child.data == "_iambig"
+            return hasattr(child, 'data') and child.data == '_iambig'
 
         def _collapse_iambig(children):
-            # --
+            #--
 
             ##
 
@@ -2303,16 +2074,17 @@ class AmbiguousIntermediateExpander:
                             child.children += children[1:]
                         result += collapsed
                     else:
-                        new_tree = self.tree_class("_inter", grandchild.children + children[1:])
+                        new_tree = self.tree_class('_inter', grandchild.children + children[1:])
                         result.append(new_tree)
                 return result
 
         collapsed = _collapse_iambig(children)
         if collapsed:
             processed_nodes = [self.node_builder(c.children) for c in collapsed]
-            return self.tree_class("_ambig", processed_nodes)
+            return self.tree_class('_ambig', processed_nodes)
 
         return self.node_builder(children)
+
 
 
 def inplace_transformer(func):
@@ -2322,7 +2094,6 @@ def inplace_transformer(func):
 
         tree = Tree(func.__name__, children)
         return func(tree)
-
     return f
 
 
@@ -2333,19 +2104,11 @@ def apply_visit_wrapper(func, name, wrapper):
     @wraps(func)
     def f(children):
         return wrapper(func, name, children, None)
-
     return f
 
 
 class ParseTreeBuilder:
-    def __init__(
-        self,
-        rules,
-        tree_class,
-        propagate_positions=False,
-        ambiguous=False,
-        maybe_placeholders=False,
-    ):
+    def __init__(self, rules, tree_class, propagate_positions=False, ambiguous=False, maybe_placeholders=False):
         self.tree_class = tree_class
         self.propagate_positions = propagate_positions
         self.ambiguous = ambiguous
@@ -2361,45 +2124,32 @@ class ParseTreeBuilder:
             keep_all_tokens = options.keep_all_tokens
             expand_single_child = options.expand1
 
-            wrapper_chain = list(
-                filter(
-                    None,
-                    [
-                        (expand_single_child and not rule.alias) and ExpandSingleChild,
-                        maybe_create_child_filter(
-                            rule.expansion,
-                            keep_all_tokens,
-                            self.ambiguous,
-                            options.empty_indices if self.maybe_placeholders else None,
-                        ),
-                        propagate_positions,
-                        self.ambiguous
-                        and maybe_create_ambiguous_expander(
-                            self.tree_class, rule.expansion, keep_all_tokens
-                        ),
-                        self.ambiguous and partial(AmbiguousIntermediateExpander, self.tree_class),
-                    ],
-                )
-            )
+            wrapper_chain = list(filter(None, [
+                (expand_single_child and not rule.alias) and ExpandSingleChild,
+                maybe_create_child_filter(rule.expansion, keep_all_tokens, self.ambiguous, options.empty_indices if self.maybe_placeholders else None),
+                propagate_positions,
+                self.ambiguous and maybe_create_ambiguous_expander(self.tree_class, rule.expansion, keep_all_tokens),
+                self.ambiguous and partial(AmbiguousIntermediateExpander, self.tree_class)
+            ]))
 
             yield rule, wrapper_chain
 
     def create_callback(self, transformer=None):
         callbacks = {}
 
-        default_handler = getattr(transformer, "__default__", None)
+        default_handler = getattr(transformer, '__default__', None)
         if default_handler:
-
             def default_callback(data, children):
                 return default_handler(data, children, None)
         else:
             default_callback = self.tree_class
 
         for rule, wrapper_chain in self.rule_builders:
+
             user_callback_name = rule.alias or rule.options.template_source or rule.origin.name
             try:
                 f = getattr(transformer, user_callback_name)
-                wrapper = getattr(f, "visit_wrapper", None)
+                wrapper = getattr(f, 'visit_wrapper', None)
                 if wrapper is not None:
                     f = apply_visit_wrapper(f, user_callback_name, wrapper)
                 elif isinstance(transformer, Transformer_InPlace):
@@ -2418,22 +2168,19 @@ class ParseTreeBuilder:
         return callbacks
 
 
+
 class Action:
     def __init__(self, name):
         self.name = name
-
     def __str__(self):
         return self.name
-
     def __repr__(self):
         return str(self)
 
-
-Shift = Action("Shift")
-Reduce = Action("Reduce")
+Shift = Action('Shift')
+Reduce = Action('Reduce')
 
 StateT = TypeVar("StateT")
-
 
 class ParseTableBase(Generic[StateT]):
     states: Dict[StateT, Dict[str, Tuple]]
@@ -2449,67 +2196,56 @@ class ParseTableBase(Generic[StateT]):
         tokens = Enumerator()
 
         states = {
-            state: {
-                tokens.get(token): ((1, arg.serialize(memo)) if action is Reduce else (0, arg))
-                for token, (action, arg) in actions.items()
-            }
+            state: {tokens.get(token): ((1, arg.serialize(memo)) if action is Reduce else (0, arg))
+                    for token, (action, arg) in actions.items()}
             for state, actions in self.states.items()
         }
 
         return {
-            "tokens": tokens.reversed(),
-            "states": states,
-            "start_states": self.start_states,
-            "end_states": self.end_states,
+            'tokens': tokens.reversed(),
+            'states': states,
+            'start_states': self.start_states,
+            'end_states': self.end_states,
         }
 
     @classmethod
     def deserialize(cls, data, memo):
-        tokens = data["tokens"]
+        tokens = data['tokens']
         states = {
-            state: {
-                tokens[token]: (
-                    (Reduce, Rule.deserialize(arg, memo)) if action == 1 else (Shift, arg)
-                )
-                for token, (action, arg) in actions.items()
-            }
-            for state, actions in data["states"].items()
+            state: {tokens[token]: ((Reduce, Rule.deserialize(arg, memo)) if action==1 else (Shift, arg))
+                    for token, (action, arg) in actions.items()}
+            for state, actions in data['states'].items()
         }
-        return cls(states, data["start_states"], data["end_states"])
+        return cls(states, data['start_states'], data['end_states'])
 
-
-class ParseTable(ParseTableBase["State"]):
-    # --
+class ParseTable(ParseTableBase['State']):
+    #--
     pass
 
 
 class IntParseTable(ParseTableBase[int]):
-    # --
+    #--
 
     @classmethod
     def from_ParseTable(cls, parse_table: ParseTable):
         enum = list(parse_table.states)
-        state_to_idx: Dict["State", int] = {s: i for i, s in enumerate(enum)}
+        state_to_idx: Dict['State', int] = {s:i for i,s in enumerate(enum)}
         int_states = {}
 
         for s, la in parse_table.states.items():
-            la = {k: (v[0], state_to_idx[v[1]]) if v[0] is Shift else v for k, v in la.items()}
-            int_states[state_to_idx[s]] = la
+            la = {k:(v[0], state_to_idx[v[1]]) if v[0] is Shift else v
+                  for k,v in la.items()}
+            int_states[ state_to_idx[s] ] = la
 
-        start_states = {start: state_to_idx[s] for start, s in parse_table.start_states.items()}
-        end_states = {start: state_to_idx[s] for start, s in parse_table.end_states.items()}
+
+        start_states = {start:state_to_idx[s] for start, s in parse_table.start_states.items()}
+        end_states = {start:state_to_idx[s] for start, s in parse_table.end_states.items()}
         return cls(int_states, start_states, end_states)
 
 
+
 class ParseConf(Generic[StateT]):
-    __slots__ = (
-        "parse_table",
-        "callbacks",
-        "start",
-        "start_state",
-        "end_state",
-        "states",
-    )
+    __slots__ = 'parse_table', 'callbacks', 'start', 'start_state', 'end_state', 'states'
 
     parse_table: ParseTableBase[StateT]
     callbacks: ParserCallbacks
@@ -2519,12 +2255,7 @@ class ParseConf(Generic[StateT]):
     end_state: StateT
     states: Dict[StateT, Dict[str, tuple]]
 
-    def __init__(
-        self,
-        parse_table: ParseTableBase[StateT],
-        callbacks: ParserCallbacks,
-        start: str,
-    ):
+    def __init__(self, parse_table: ParseTableBase[StateT], callbacks: ParserCallbacks, start: str):
         self.parse_table = parse_table
 
         self.start_state = self.parse_table.start_states[start]
@@ -2534,22 +2265,15 @@ class ParseConf(Generic[StateT]):
         self.callbacks = callbacks
         self.start = start
 
-
 class ParserState(Generic[StateT]):
-    __slots__ = "parse_conf", "lexer", "state_stack", "value_stack"
+    __slots__ = 'parse_conf', 'lexer', 'state_stack', 'value_stack'
 
     parse_conf: ParseConf[StateT]
     lexer: LexerThread
     state_stack: List[StateT]
     value_stack: list
 
-    def __init__(
-        self,
-        parse_conf: ParseConf[StateT],
-        lexer: LexerThread,
-        state_stack=None,
-        value_stack=None,
-    ):
+    def __init__(self, parse_conf: ParseConf[StateT], lexer: LexerThread, state_stack=None, value_stack=None):
         self.parse_conf = parse_conf
         self.lexer = lexer
         self.state_stack = state_stack or [self.parse_conf.start_state]
@@ -2569,10 +2293,11 @@ class ParserState(Generic[StateT]):
     def __copy__(self):
         return self.copy()
 
-    def copy(self, deepcopy_values=True) -> "ParserState[StateT]":
+    def copy(self, deepcopy_values=True) -> 'ParserState[StateT]':
         return type(self)(
             self.parse_conf,
-            self.lexer,  ##
+            self.lexer, ##
+
             copy(self.state_stack),
             deepcopy(self.value_stack) if deepcopy_values else copy(self.value_stack),
         )
@@ -2599,9 +2324,7 @@ class ParserState(Generic[StateT]):
 
                 assert not is_end
                 state_stack.append(arg)
-                value_stack.append(
-                    token if token.type not in callbacks else callbacks[token.type](token)
-                )
+                value_stack.append(token if token.type not in callbacks else callbacks[token.type](token))
                 return
             else:
                 ##
@@ -2627,7 +2350,7 @@ class ParserState(Generic[StateT]):
 
 
 class LALR_Parser(Serialize):
-    def __init__(self, parser_conf: ParserConf, debug: bool = False, strict: bool = False):
+    def __init__(self, parser_conf: ParserConf, debug: bool=False, strict: bool=False):
         analysis = LALR_Analyzer(parser_conf, debug=debug, strict=strict)
         analysis.compute_lalr()
         callbacks = parser_conf.callbacks
@@ -2668,16 +2391,14 @@ class LALR_Parser(Serialize):
                     ##
 
                     if p == s.line_ctr.char_pos:
-                        s.line_ctr.feed(s.text[p : p + 1])
+                        s.line_ctr.feed(s.text[p:p+1])
 
                 try:
                     return e.interactive_parser.resume_parse()
                 except UnexpectedToken as e2:
-                    if (
-                        isinstance(e, UnexpectedToken)
-                        and e.token.type == e2.token.type == "$END"
-                        and e.interactive_parser == e2.interactive_parser
-                    ):
+                    if (isinstance(e, UnexpectedToken)
+                        and e.token.type == e2.token.type == '$END'
+                        and e.interactive_parser == e2.interactive_parser):
                         ##
 
                         raise e2
@@ -2691,41 +2412,28 @@ class _Parser:
     callbacks: ParserCallbacks
     debug: bool
 
-    def __init__(
-        self,
-        parse_table: ParseTableBase,
-        callbacks: ParserCallbacks,
-        debug: bool = False,
-    ):
+    def __init__(self, parse_table: ParseTableBase, callbacks: ParserCallbacks, debug: bool=False):
         self.parse_table = parse_table
         self.callbacks = callbacks
         self.debug = debug
 
-    def parse(
-        self,
-        lexer: LexerThread,
-        start: str,
-        value_stack=None,
-        state_stack=None,
-        start_interactive=False,
-    ):
+    def parse(self, lexer: LexerThread, start: str, value_stack=None, state_stack=None, start_interactive=False):
         parse_conf = ParseConf(self.parse_table, self.callbacks, start)
         parser_state = ParserState(parse_conf, lexer, state_stack, value_stack)
         if start_interactive:
             return InteractiveParser(self, parser_state, parser_state.lexer)
         return self.parse_from_state(parser_state)
 
-    def parse_from_state(self, state: ParserState, last_token: Optional[Token] = None):
-        # --
+
+    def parse_from_state(self, state: ParserState, last_token: Optional[Token]=None):
+        #--
         try:
             token = last_token
             for token in state.lexer.lex(state):
                 assert token is not None
                 state.feed_token(token)
 
-            end_token = (
-                Token.new_borrow_pos("$END", "", token) if token else Token("$END", "", 0, 1, 1)
-            )
+            end_token = Token.new_borrow_pos('$END', '', token) if token else Token('$END', '', 0, 1, 1)
             return state.feed_token(end_token, True)
         except UnexpectedInput as e:
             try:
@@ -2739,14 +2447,14 @@ class _Parser:
                 print("STATE STACK DUMP")
                 print("----------------")
                 for i, s in enumerate(state.state_stack):
-                    print("%d)" % i, s)
+                    print('%d)' % i , s)
                 print("")
 
             raise
 
 
 class InteractiveParser:
-    # --
+    #--
     def __init__(self, parser, parser_state: ParserState, lexer_thread: LexerThread):
         self.parser = parser
         self.parser_state = parser_state
@@ -2755,37 +2463,32 @@ class InteractiveParser:
 
     @property
     def lexer_state(self) -> LexerThread:
-        warnings.warn(
-            "lexer_state will be removed in subsequent releases. Use lexer_thread instead.",
-            DeprecationWarning,
-        )
+        warnings.warn("lexer_state will be removed in subsequent releases. Use lexer_thread instead.", DeprecationWarning)
         return self.lexer_thread
 
     def feed_token(self, token: Token):
-        # --
-        return self.parser_state.feed_token(token, token.type == "$END")
+        #--
+        return self.parser_state.feed_token(token, token.type == '$END')
 
     def iter_parse(self) -> Iterator[Token]:
-        # --
+        #--
         for token in self.lexer_thread.lex(self.parser_state):
             yield token
             self.result = self.feed_token(token)
 
     def exhaust_lexer(self) -> List[Token]:
-        # --
+        #--
         return list(self.iter_parse())
 
+
     def feed_eof(self, last_token=None):
-        # --
-        eof = (
-            Token.new_borrow_pos("$END", "", last_token)
-            if last_token is not None
-            else self.lexer_thread._Token("$END", "", 0, 1, 1)
-        )
+        #--
+        eof = Token.new_borrow_pos('$END', '', last_token) if last_token is not None else self.lexer_thread._Token('$END', '', 0, 1, 1)
         return self.feed_token(eof)
 
+
     def __copy__(self):
-        # --
+        #--
         return self.copy()
 
     def copy(self, deepcopy_values=True):
@@ -2802,24 +2505,24 @@ class InteractiveParser:
         return self.parser_state == other.parser_state and self.lexer_thread == other.lexer_thread
 
     def as_immutable(self):
-        # --
+        #--
         p = copy(self)
         return ImmutableInteractiveParser(p.parser, p.parser_state, p.lexer_thread)
 
     def pretty(self):
-        # --
+        #--
         out = ["Parser choices:"]
         for k, v in self.choices().items():
-            out.append("\t- %s -> %r" % (k, v))
-        out.append("stack size: %s" % len(self.parser_state.state_stack))
-        return "\n".join(out)
+            out.append('\t- %s -> %r' % (k, v))
+        out.append('stack size: %s' % len(self.parser_state.state_stack))
+        return '\n'.join(out)
 
     def choices(self):
-        # --
+        #--
         return self.parser_state.parse_conf.parse_table.states[self.parser_state.position]
 
     def accepts(self):
-        # --
+        #--
         accepts = set()
         conf_no_callbacks = copy(self.parser_state.parse_conf)
         ##
@@ -2828,11 +2531,12 @@ class InteractiveParser:
 
         conf_no_callbacks.callbacks = {}
         for t in self.choices():
-            if t.isupper():  ##
+            if t.isupper(): ##
+
                 new_cursor = self.copy(deepcopy_values=False)
                 new_cursor.parser_state.parse_conf = conf_no_callbacks
                 try:
-                    new_cursor.feed_token(self.lexer_thread._Token(t, ""))
+                    new_cursor.feed_token(self.lexer_thread._Token(t, ''))
                 except UnexpectedToken:
                     pass
                 else:
@@ -2840,14 +2544,13 @@ class InteractiveParser:
         return accepts
 
     def resume_parse(self):
-        # --
-        return self.parser.parse_from_state(
-            self.parser_state, last_token=self.lexer_thread.state.last_token
-        )
+        #--
+        return self.parser.parse_from_state(self.parser_state, last_token=self.lexer_thread.state.last_token)
+
 
 
 class ImmutableInteractiveParser(InteractiveParser):
-    # --
+    #--
 
     result = None
 
@@ -2860,46 +2563,44 @@ class ImmutableInteractiveParser(InteractiveParser):
         return c
 
     def exhaust_lexer(self):
-        # --
+        #--
         cursor = self.as_mutable()
         cursor.exhaust_lexer()
         return cursor.as_immutable()
 
     def as_mutable(self):
-        # --
+        #--
         p = copy(self)
         return InteractiveParser(p.parser, p.parser_state, p.lexer_thread)
 
 
+
 def _wrap_lexer(lexer_class):
-    future_interface = getattr(lexer_class, "__future_interface__", False)
+    future_interface = getattr(lexer_class, '__future_interface__', False)
     if future_interface:
         return lexer_class
     else:
-
         class CustomLexerWrapper(Lexer):
             def __init__(self, lexer_conf):
                 self.lexer = lexer_class(lexer_conf)
-
             def lex(self, lexer_state, parser_state):
                 return self.lexer.lex(lexer_state.text)
-
         return CustomLexerWrapper
 
 
 def _deserialize_parsing_frontend(data, memo, lexer_conf, callbacks, options):
-    parser_conf = ParserConf.deserialize(data["parser_conf"], memo)
-    cls = (options and options._plugins.get("LALR_Parser")) or LALR_Parser
-    parser = cls.deserialize(data["parser"], memo, callbacks, options.debug)
+    parser_conf = ParserConf.deserialize(data['parser_conf'], memo)
+    cls = (options and options._plugins.get('LALR_Parser')) or LALR_Parser
+    parser = cls.deserialize(data['parser'], memo, callbacks, options.debug)
     parser_conf.callbacks = callbacks
     return ParsingFrontend(lexer_conf, parser_conf, options, parser=parser)
 
 
-_parser_creators: "Dict[str, Callable[[LexerConf, Any, Any], Any]]" = {}
+_parser_creators: 'Dict[str, Callable[[LexerConf, Any, Any], Any]]' = {}
 
 
 class ParsingFrontend(Serialize):
-    __serialize_fields__ = "lexer_conf", "parser_conf", "parser"
+    __serialize_fields__ = 'lexer_conf', 'parser_conf', 'parser'
 
     lexer_conf: LexerConf
     parser_conf: ParserConf
@@ -2913,19 +2614,20 @@ class ParsingFrontend(Serialize):
         ##
 
         if parser:  ##
+
             self.parser = parser
         else:
             create_parser = _parser_creators.get(parser_conf.parser_type)
             assert create_parser is not None, "{} is not supported in standalone mode".format(
-                parser_conf.parser_type
-            )
+                    parser_conf.parser_type
+                )
             self.parser = create_parser(lexer_conf, parser_conf, options)
 
         ##
 
         lexer_type = lexer_conf.lexer_type
         self.skip_lexer = False
-        if lexer_type in ("dynamic", "dynamic_complete"):
+        if lexer_type in ('dynamic', 'dynamic_complete'):
             assert lexer_conf.postlex is None
             self.skip_lexer = True
             return
@@ -2935,8 +2637,8 @@ class ParsingFrontend(Serialize):
             self.lexer = _wrap_lexer(lexer_type)(lexer_conf)
         elif isinstance(lexer_type, str):
             create_lexer = {
-                "basic": create_basic_lexer,
-                "contextual": create_contextual_lexer,
+                'basic': create_basic_lexer,
+                'contextual': create_contextual_lexer,
             }[lexer_type]
             self.lexer = create_lexer(lexer_conf, self.parser, lexer_conf.postlex, options)
         else:
@@ -2949,34 +2651,29 @@ class ParsingFrontend(Serialize):
         if start is None:
             start_decls = self.parser_conf.start
             if len(start_decls) > 1:
-                raise ConfigurationError(
-                    "Lark initialized with more than 1 possible start rule. Must specify which start rule to parse",
-                    start_decls,
-                )
-            (start,) = start_decls
+                raise ConfigurationError("Lark initialized with more than 1 possible start rule. Must specify which start rule to parse", start_decls)
+            start ,= start_decls
         elif start not in self.parser_conf.start:
-            raise ConfigurationError(
-                "Unknown start rule %s. Must be one of %r" % (start, self.parser_conf.start)
-            )
+            raise ConfigurationError("Unknown start rule %s. Must be one of %r" % (start, self.parser_conf.start))
         return start
 
     def _make_lexer_thread(self, text: str) -> Union[str, LexerThread]:
-        cls = (self.options and self.options._plugins.get("LexerThread")) or LexerThread
+        cls = (self.options and self.options._plugins.get('LexerThread')) or LexerThread
         return text if self.skip_lexer else cls.from_text(self.lexer, text)
 
     def parse(self, text: str, start=None, on_error=None):
         chosen_start = self._verify_start(start)
-        kw = {} if on_error is None else {"on_error": on_error}
+        kw = {} if on_error is None else {'on_error': on_error}
         stream = self._make_lexer_thread(text)
         return self.parser.parse(stream, chosen_start, **kw)
 
-    def parse_interactive(self, text: Optional[str] = None, start=None):
+    def parse_interactive(self, text: Optional[str]=None, start=None):
         ##
 
         ##
 
         chosen_start = self._verify_start(start)
-        if self.parser_conf.parser_type != "lalr":
+        if self.parser_conf.parser_type != 'lalr':
             raise ConfigurationError("parse_interactive() currently only works with parser='lalr' ")
         stream = self._make_lexer_thread(text)  ##
 
@@ -2984,18 +2681,15 @@ class ParsingFrontend(Serialize):
 
 
 def _validate_frontend_args(parser, lexer) -> None:
-    assert_config(parser, ("lalr", "earley", "cyk"))
-    if not isinstance(lexer, type):  ##
+    assert_config(parser, ('lalr', 'earley', 'cyk'))
+    if not isinstance(lexer, type):     ##
+
         expected = {
-            "lalr": ("basic", "contextual"),
-            "earley": ("basic", "dynamic", "dynamic_complete"),
-            "cyk": ("basic",),
-        }[parser]
-        assert_config(
-            lexer,
-            expected,
-            "Parser %r does not support lexer %%r, expected one of %%s" % parser,
-        )
+            'lalr': ('basic', 'contextual'),
+            'earley': ('basic', 'dynamic', 'dynamic_complete'),
+            'cyk': ('basic', ),
+         }[parser]
+        assert_config(lexer, expected, 'Parser %r does not support lexer %%r, expected one of %%s' % parser)
 
 
 def _get_lexer_callbacks(transformer, terminals):
@@ -3005,7 +2699,6 @@ def _get_lexer_callbacks(transformer, terminals):
         if callback is not None:
             result[terminal.name] = callback
     return result
-
 
 class PostLexConnector:
     def __init__(self, lexer, postlexer):
@@ -3017,29 +2710,27 @@ class PostLexConnector:
         return self.postlexer.process(i)
 
 
+
 def create_basic_lexer(lexer_conf, parser, postlex, options) -> BasicLexer:
-    cls = (options and options._plugins.get("BasicLexer")) or BasicLexer
+    cls = (options and options._plugins.get('BasicLexer')) or BasicLexer
     return cls(lexer_conf)
 
-
 def create_contextual_lexer(lexer_conf: LexerConf, parser, postlex, options) -> ContextualLexer:
-    cls = (options and options._plugins.get("ContextualLexer")) or ContextualLexer
+    cls = (options and options._plugins.get('ContextualLexer')) or ContextualLexer
     parse_table: ParseTableBase[int] = parser._parse_table
-    states: Dict[int, Collection[str]] = {
-        idx: list(t.keys()) for idx, t in parse_table.states.items()
-    }
+    states: Dict[int, Collection[str]] = {idx:list(t.keys()) for idx, t in parse_table.states.items()}
     always_accept: Collection[str] = postlex.always_accept if postlex else ()
     return cls(lexer_conf, states, always_accept=always_accept)
-
 
 def create_lalr_parser(lexer_conf: LexerConf, parser_conf: ParserConf, options=None) -> LALR_Parser:
     debug = options.debug if options else False
     strict = options.strict if options else False
-    cls = (options and options._plugins.get("LALR_Parser")) or LALR_Parser
+    cls = (options and options._plugins.get('LALR_Parser')) or LALR_Parser
     return cls(parser_conf, debug=debug, strict=strict)
 
+_parser_creators['lalr'] = create_lalr_parser
 
-_parser_creators["lalr"] = create_lalr_parser
+
 
 
 class PostLex(ABC):
@@ -3049,14 +2740,13 @@ class PostLex(ABC):
 
     always_accept: Iterable[str] = ()
 
-
 class LarkOptions(Serialize):
-    # --
+    #--
 
     start: List[str]
     debug: bool
     strict: bool
-    transformer: "Optional[Transformer]"
+    transformer: 'Optional[Transformer]'
     propagate_positions: Union[bool, str]
     maybe_placeholders: bool
     cache: Union[bool, str]
@@ -3073,9 +2763,7 @@ class LarkOptions(Serialize):
     use_bytes: bool
     ordered_sets: bool
     edit_terminals: Optional[Callable[[TerminalDef], TerminalDef]]
-    import_paths: (
-        "List[Union[str, Callable[[Union[None, str, PackageResource], str], Tuple[str, str]]]]"
-    )
+    import_paths: 'List[Union[str, Callable[[Union[None, str, PackageResource], str], Tuple[str, str]]]]'
     source_path: Optional[str]
 
     OPTIONS_DOC = r"""
@@ -3158,6 +2846,7 @@ class LarkOptions(Serialize):
     if __doc__:
         __doc__ += OPTIONS_DOC
 
+
     ##
 
     ##
@@ -3171,29 +2860,29 @@ class LarkOptions(Serialize):
     ##
 
     _defaults: Dict[str, Any] = {
-        "debug": False,
-        "strict": False,
-        "keep_all_tokens": False,
-        "tree_class": None,
-        "cache": False,
-        "postlex": None,
-        "parser": "earley",
-        "lexer": "auto",
-        "transformer": None,
-        "start": "start",
-        "priority": "auto",
-        "ambiguity": "auto",
-        "regex": False,
-        "propagate_positions": False,
-        "lexer_callbacks": {},
-        "maybe_placeholders": True,
-        "edit_terminals": None,
-        "g_regex_flags": 0,
-        "use_bytes": False,
-        "ordered_sets": True,
-        "import_paths": [],
-        "source_path": None,
-        "_plugins": {},
+        'debug': False,
+        'strict': False,
+        'keep_all_tokens': False,
+        'tree_class': None,
+        'cache': False,
+        'postlex': None,
+        'parser': 'earley',
+        'lexer': 'auto',
+        'transformer': None,
+        'start': 'start',
+        'priority': 'auto',
+        'ambiguity': 'auto',
+        'regex': False,
+        'propagate_positions': False,
+        'lexer_callbacks': {},
+        'maybe_placeholders': True,
+        'edit_terminals': None,
+        'g_regex_flags': 0,
+        'use_bytes': False,
+        'ordered_sets': True,
+        'import_paths': [],
+        'source_path': None,
+        '_plugins': {},
     }
 
     def __init__(self, options_dict: Dict[str, Any]) -> None:
@@ -3203,36 +2892,31 @@ class LarkOptions(Serialize):
         for name, default in self._defaults.items():
             if name in o:
                 value = o.pop(name)
-                if isinstance(default, bool) and name not in (
-                    "cache",
-                    "use_bytes",
-                    "propagate_positions",
-                ):
+                if isinstance(default, bool) and name not in ('cache', 'use_bytes', 'propagate_positions'):
                     value = bool(value)
             else:
                 value = default
 
             options[name] = value
 
-        if isinstance(options["start"], str):
-            options["start"] = [options["start"]]
+        if isinstance(options['start'], str):
+            options['start'] = [options['start']]
 
-        self.__dict__["options"] = options
+        self.__dict__['options'] = options
 
-        assert_config(self.parser, ("earley", "lalr", "cyk", None))
 
-        if self.parser == "earley" and self.transformer:
-            raise ConfigurationError(
-                "Cannot specify an embedded transformer when using the Earley algorithm. "
-                "Please use your transformer on the resulting parse tree, or use a different algorithm (i.e. LALR)"
-            )
+        assert_config(self.parser, ('earley', 'lalr', 'cyk', None))
+
+        if self.parser == 'earley' and self.transformer:
+            raise ConfigurationError('Cannot specify an embedded transformer when using the Earley algorithm. '
+                             'Please use your transformer on the resulting parse tree, or use a different algorithm (i.e. LALR)')
 
         if o:
             raise ConfigurationError("Unknown options: %s" % o.keys())
 
     def __getattr__(self, name: str) -> Any:
         try:
-            return self.__dict__["options"][name]
+            return self.__dict__['options'][name]
         except KeyError as e:
             raise AttributeError(e)
 
@@ -3240,13 +2924,11 @@ class LarkOptions(Serialize):
         assert_config(name, self.options.keys(), "%r isn't a valid option. Expected one of: %s")
         self.options[name] = value
 
-    def serialize(self, memo=None) -> Dict[str, Any]:
+    def serialize(self, memo = None) -> Dict[str, Any]:
         return self.options
 
     @classmethod
-    def deserialize(
-        cls, data: Dict[str, Any], memo: Dict[int, Union[TerminalDef, Rule]]
-    ) -> "LarkOptions":
+    def deserialize(cls, data: Dict[str, Any], memo: Dict[int, Union[TerminalDef, Rule]]) -> "LarkOptions":
         return cls(data)
 
 
@@ -3254,38 +2936,26 @@ class LarkOptions(Serialize):
 
 ##
 
-_LOAD_ALLOWED_OPTIONS = {
-    "postlex",
-    "transformer",
-    "lexer_callbacks",
-    "use_bytes",
-    "debug",
-    "g_regex_flags",
-    "regex",
-    "propagate_positions",
-    "tree_class",
-    "_plugins",
-}
+_LOAD_ALLOWED_OPTIONS = {'postlex', 'transformer', 'lexer_callbacks', 'use_bytes', 'debug', 'g_regex_flags', 'regex', 'propagate_positions', 'tree_class', '_plugins'}
 
-_VALID_PRIORITY_OPTIONS = ("auto", "normal", "invert", None)
-_VALID_AMBIGUITY_OPTIONS = ("auto", "resolve", "explicit", "forest")
+_VALID_PRIORITY_OPTIONS = ('auto', 'normal', 'invert', None)
+_VALID_AMBIGUITY_OPTIONS = ('auto', 'resolve', 'explicit', 'forest')
 
 
-_T = TypeVar("_T", bound="Lark")
-
+_T = TypeVar('_T', bound="Lark")
 
 class Lark(Serialize):
-    # --
+    #--
 
     source_path: str
     source_grammar: str
-    grammar: "Grammar"
+    grammar: 'Grammar'
     options: LarkOptions
     lexer: Lexer
-    parser: "ParsingFrontend"
+    parser: 'ParsingFrontend'
     terminals: Collection[TerminalDef]
 
-    def __init__(self, grammar: "Union[Grammar, str, IO[str]]", **options) -> None:
+    def __init__(self, grammar: 'Union[Grammar, str, IO[str]]', **options) -> None:
         self.options = LarkOptions(options)
         re_module: types.ModuleType
 
@@ -3296,7 +2966,7 @@ class Lark(Serialize):
             if _has_regex:
                 re_module = regex
             else:
-                raise ImportError("`regex` module must be installed if calling `Lark(regex=True)`.")
+                raise ImportError('`regex` module must be installed if calling `Lark(regex=True)`.')
         else:
             re_module = re
 
@@ -3307,7 +2977,7 @@ class Lark(Serialize):
                 self.source_path = grammar.name  ##
 
             except AttributeError:
-                self.source_path = "<string>"
+                self.source_path = '<string>'
         else:
             self.source_path = self.options.source_path
 
@@ -3330,19 +3000,12 @@ class Lark(Serialize):
                     raise ConfigurationError("Grammar must be ascii only, when use_bytes=True")
 
             if self.options.cache:
-                if self.options.parser != "lalr":
+                if self.options.parser != 'lalr':
                     raise ConfigurationError("cache only works with parser='lalr' for now")
 
-                unhashable = (
-                    "transformer",
-                    "postlex",
-                    "lexer_callbacks",
-                    "edit_terminals",
-                    "_plugins",
-                )
-                options_str = "".join(k + str(v) for k, v in options.items() if k not in unhashable)
+                unhashable = ('transformer', 'postlex', 'lexer_callbacks', 'edit_terminals', '_plugins')
+                options_str = ''.join(k+str(v) for k, v in options.items() if k not in unhashable)
                 from . import __version__
-
                 s = grammar + options_str + __version__ + str(sys.version_info[:2])
                 cache_sha256 = sha256_digest(s)
 
@@ -3363,25 +3026,19 @@ class Lark(Serialize):
 
                         username = "unknown"
 
-                    cache_fn = tempfile.gettempdir() + "/.lark_cache_%s_%s_%s_%s.tmp" % (
-                        username,
-                        cache_sha256,
-                        *sys.version_info[:2],
-                    )
+                    cache_fn = tempfile.gettempdir() + "/.lark_cache_%s_%s_%s_%s.tmp" % (username, cache_sha256, *sys.version_info[:2])
 
                 old_options = self.options
                 try:
-                    with FS.open(cache_fn, "rb") as f:
-                        logger.debug("Loading grammar from cache: %s", cache_fn)
+                    with FS.open(cache_fn, 'rb') as f:
+                        logger.debug('Loading grammar from cache: %s', cache_fn)
                         ##
 
-                        for name in set(options) - _LOAD_ALLOWED_OPTIONS:
+                        for name in (set(options) - _LOAD_ALLOWED_OPTIONS):
                             del options[name]
-                        file_sha256 = f.readline().rstrip(b"\n")
+                        file_sha256 = f.readline().rstrip(b'\n')
                         cached_used_files = pickle.load(f)
-                        if file_sha256 == cache_sha256.encode("utf8") and verify_used_files(
-                            cached_used_files
-                        ):
+                        if file_sha256 == cache_sha256.encode('utf8') and verify_used_files(cached_used_files):
                             cached_parser_data = pickle.load(f)
                             self._load(cached_parser_data, **options)
                             return
@@ -3389,11 +3046,9 @@ class Lark(Serialize):
                     ##
 
                     pass
-                except Exception:  ##
-                    logger.exception(
-                        "Failed to load Lark from cache: %r. We will try to carry on.",
-                        cache_fn,
-                    )
+                except Exception: ##
+
+                    logger.exception("Failed to load Lark from cache: %r. We will try to carry on.", cache_fn)
 
                     ##
 
@@ -3401,71 +3056,54 @@ class Lark(Serialize):
 
                     self.options = old_options
 
+
             ##
 
-            self.grammar, used_files = load_grammar(
-                grammar,
-                self.source_path,
-                self.options.import_paths,
-                self.options.keep_all_tokens,
-            )
+            self.grammar, used_files = load_grammar(grammar, self.source_path, self.options.import_paths, self.options.keep_all_tokens)
         else:
             assert isinstance(grammar, Grammar)
             self.grammar = grammar
 
-        if self.options.lexer == "auto":
-            if self.options.parser == "lalr":
-                self.options.lexer = "contextual"
-            elif self.options.parser == "earley":
+
+        if self.options.lexer == 'auto':
+            if self.options.parser == 'lalr':
+                self.options.lexer = 'contextual'
+            elif self.options.parser == 'earley':
                 if self.options.postlex is not None:
-                    logger.info(
-                        "postlex can't be used with the dynamic lexer, so we use 'basic' instead. "
-                        "Consider using lalr with contextual instead of earley"
-                    )
-                    self.options.lexer = "basic"
+                    logger.info("postlex can't be used with the dynamic lexer, so we use 'basic' instead. "
+                                "Consider using lalr with contextual instead of earley")
+                    self.options.lexer = 'basic'
                 else:
-                    self.options.lexer = "dynamic"
-            elif self.options.parser == "cyk":
-                self.options.lexer = "basic"
+                    self.options.lexer = 'dynamic'
+            elif self.options.parser == 'cyk':
+                self.options.lexer = 'basic'
             else:
                 assert False, self.options.parser
         lexer = self.options.lexer
         if isinstance(lexer, type):
-            assert issubclass(lexer, Lexer)  ##
+            assert issubclass(lexer, Lexer)     ##
 
         else:
-            assert_config(lexer, ("basic", "contextual", "dynamic", "dynamic_complete"))
-            if self.options.postlex is not None and "dynamic" in lexer:
-                raise ConfigurationError(
-                    "Can't use postlex with a dynamic lexer. Use basic or contextual instead"
-                )
+            assert_config(lexer, ('basic', 'contextual', 'dynamic', 'dynamic_complete'))
+            if self.options.postlex is not None and 'dynamic' in lexer:
+                raise ConfigurationError("Can't use postlex with a dynamic lexer. Use basic or contextual instead")
 
-        if self.options.ambiguity == "auto":
-            if self.options.parser == "earley":
-                self.options.ambiguity = "resolve"
+        if self.options.ambiguity == 'auto':
+            if self.options.parser == 'earley':
+                self.options.ambiguity = 'resolve'
         else:
-            assert_config(
-                self.options.parser,
-                ("earley", "cyk"),
-                "%r doesn't support disambiguation. Use one of these parsers instead: %s",
-            )
+            assert_config(self.options.parser, ('earley', 'cyk'), "%r doesn't support disambiguation. Use one of these parsers instead: %s")
 
-        if self.options.priority == "auto":
-            self.options.priority = "normal"
+        if self.options.priority == 'auto':
+            self.options.priority = 'normal'
 
         if self.options.priority not in _VALID_PRIORITY_OPTIONS:
-            raise ConfigurationError(
-                "invalid priority option: %r. Must be one of %r"
-                % (self.options.priority, _VALID_PRIORITY_OPTIONS)
-            )
+            raise ConfigurationError("invalid priority option: %r. Must be one of %r" % (self.options.priority, _VALID_PRIORITY_OPTIONS))
         if self.options.ambiguity not in _VALID_AMBIGUITY_OPTIONS:
-            raise ConfigurationError(
-                "invalid ambiguity option: %r. Must be one of %r"
-                % (self.options.ambiguity, _VALID_AMBIGUITY_OPTIONS)
-            )
+            raise ConfigurationError("invalid ambiguity option: %r. Must be one of %r" % (self.options.ambiguity, _VALID_AMBIGUITY_OPTIONS))
 
         if self.options.parser is None:
-            terminals_to_keep = "*"
+            terminals_to_keep = '*'
         elif self.options.postlex is not None:
             terminals_to_keep = set(self.options.postlex.always_accept)
         else:
@@ -3473,9 +3111,7 @@ class Lark(Serialize):
 
         ##
 
-        self.terminals, self.rules, self.ignore_tokens = self.grammar.compile(
-            self.options.start, terminals_to_keep
-        )
+        self.terminals, self.rules, self.ignore_tokens = self.grammar.compile(self.options.start, terminals_to_keep)
 
         if self.options.edit_terminals:
             for t in self.terminals:
@@ -3485,7 +3121,7 @@ class Lark(Serialize):
 
         ##
 
-        if self.options.priority == "invert":
+        if self.options.priority == 'invert':
             for rule in self.rules:
                 if rule.options.priority is not None:
                     rule.options.priority = -rule.options.priority
@@ -3507,15 +3143,9 @@ class Lark(Serialize):
         ##
 
         self.lexer_conf = LexerConf(
-            self.terminals,
-            re_module,
-            self.ignore_tokens,
-            self.options.postlex,
-            self.options.lexer_callbacks,
-            self.options.g_regex_flags,
-            use_bytes=self.options.use_bytes,
-            strict=self.options.strict,
-        )
+                self.terminals, re_module, self.ignore_tokens, self.options.postlex,
+                self.options.lexer_callbacks, self.options.g_regex_flags, use_bytes=self.options.use_bytes, strict=self.options.strict
+            )
 
         if self.options.parser:
             self.parser = self._build_parser()
@@ -3523,11 +3153,11 @@ class Lark(Serialize):
             self.lexer = self._build_lexer()
 
         if cache_fn:
-            logger.debug("Saving grammar to cache: %s", cache_fn)
+            logger.debug('Saving grammar to cache: %s', cache_fn)
             try:
-                with FS.open(cache_fn, "wb") as f:
+                with FS.open(cache_fn, 'wb') as f:
                     assert cache_sha256 is not None
-                    f.write(cache_sha256.encode("utf8") + b"\n")
+                    f.write(cache_sha256.encode('utf8') + b'\n')
                     pickle.dump(used_files, f)
                     self.save(f, _LOAD_ALLOWED_OPTIONS)
             except IOError as e:
@@ -3536,13 +3166,12 @@ class Lark(Serialize):
     if __doc__:
         __doc__ += "\n\n" + LarkOptions.OPTIONS_DOC
 
-    __serialize_fields__ = "parser", "rules", "options"
+    __serialize_fields__ = 'parser', 'rules', 'options'
 
-    def _build_lexer(self, dont_ignore: bool = False) -> BasicLexer:
+    def _build_lexer(self, dont_ignore: bool=False) -> BasicLexer:
         lexer_conf = self.lexer_conf
         if dont_ignore:
             from copy import copy
-
             lexer_conf = copy(lexer_conf)
             lexer_conf.ignore = ()
         return BasicLexer(lexer_conf)
@@ -3551,14 +3180,14 @@ class Lark(Serialize):
         self._callbacks = {}
         ##
 
-        if self.options.ambiguity != "forest":
+        if self.options.ambiguity != 'forest':
             self._parse_tree_builder = ParseTreeBuilder(
-                self.rules,
-                self.options.tree_class or Tree,
-                self.options.propagate_positions,
-                self.options.parser != "lalr" and self.options.ambiguity == "explicit",
-                self.options.maybe_placeholders,
-            )
+                    self.rules,
+                    self.options.tree_class or Tree,
+                    self.options.propagate_positions,
+                    self.options.parser != 'lalr' and self.options.ambiguity == 'explicit',
+                    self.options.maybe_placeholders
+                )
             self._callbacks = self._parse_tree_builder.create_callback(self.options.transformer)
         self._callbacks.update(_get_lexer_callbacks(self.options.transformer, self.terminals))
 
@@ -3571,31 +3200,26 @@ class Lark(Serialize):
             self.options.lexer,
             self.lexer_conf,
             parser_conf,
-            options=self.options,
+            options=self.options
         )
 
     def save(self, f, exclude_options: Collection[str] = ()) -> None:
-        # --
-        if self.options.parser != "lalr":
+        #--
+        if self.options.parser != 'lalr':
             raise NotImplementedError("Lark.save() is only implemented for the LALR(1) parser.")
         data, m = self.memo_serialize([TerminalDef, Rule])
         if exclude_options:
             data["options"] = {n: v for n, v in data["options"].items() if n not in exclude_options}
-        pickle.dump({"data": data, "memo": m}, f, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump({'data': data, 'memo': m}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     @classmethod
     def load(cls: Type[_T], f) -> _T:
-        # --
+        #--
         inst = cls.__new__(cls)
         return inst._load(f)
 
-    def _deserialize_lexer_conf(
-        self,
-        data: Dict[str, Any],
-        memo: Dict[int, Union[TerminalDef, Rule]],
-        options: LarkOptions,
-    ) -> LexerConf:
-        lexer_conf = LexerConf.deserialize(data["lexer_conf"], memo)
+    def _deserialize_lexer_conf(self, data: Dict[str, Any], memo: Dict[int, Union[TerminalDef, Rule]], options: LarkOptions) -> LexerConf:
+        lexer_conf = LexerConf.deserialize(data['lexer_conf'], memo)
         lexer_conf.callbacks = options.lexer_callbacks or {}
         lexer_conf.re_module = regex if options.regex else re
         lexer_conf.use_bytes = options.use_bytes
@@ -3609,79 +3233,66 @@ class Lark(Serialize):
             d = f
         else:
             d = pickle.load(f)
-        memo_json = d["memo"]
-        data = d["data"]
+        memo_json = d['memo']
+        data = d['data']
 
         assert memo_json
-        memo = SerializeMemoizer.deserialize(
-            memo_json, {"Rule": Rule, "TerminalDef": TerminalDef}, {}
-        )
-        options = dict(data["options"])
+        memo = SerializeMemoizer.deserialize(memo_json, {'Rule': Rule, 'TerminalDef': TerminalDef}, {})
+        options = dict(data['options'])
         if (set(kwargs) - _LOAD_ALLOWED_OPTIONS) & set(LarkOptions._defaults):
-            raise ConfigurationError(
-                "Some options are not allowed when loading a Parser: {}".format(
-                    set(kwargs) - _LOAD_ALLOWED_OPTIONS
-                )
-            )
+            raise ConfigurationError("Some options are not allowed when loading a Parser: {}"
+                             .format(set(kwargs) - _LOAD_ALLOWED_OPTIONS))
         options.update(kwargs)
         self.options = LarkOptions.deserialize(options, memo)
-        self.rules = [Rule.deserialize(r, memo) for r in data["rules"]]
-        self.source_path = "<deserialized>"
+        self.rules = [Rule.deserialize(r, memo) for r in data['rules']]
+        self.source_path = '<deserialized>'
         _validate_frontend_args(self.options.parser, self.options.lexer)
-        self.lexer_conf = self._deserialize_lexer_conf(data["parser"], memo, self.options)
+        self.lexer_conf = self._deserialize_lexer_conf(data['parser'], memo, self.options)
         self.terminals = self.lexer_conf.terminals
         self._prepare_callbacks()
         self._terminals_dict = {t.name: t for t in self.terminals}
         self.parser = _deserialize_parsing_frontend(
-            data["parser"],
+            data['parser'],
             memo,
             self.lexer_conf,
             self._callbacks,
             self.options,  ##
+
         )
         return self
 
     @classmethod
     def _load_from_dict(cls, data, memo, **kwargs):
         inst = cls.__new__(cls)
-        return inst._load({"data": data, "memo": memo}, **kwargs)
+        return inst._load({'data': data, 'memo': memo}, **kwargs)
 
     @classmethod
-    def open(cls: Type[_T], grammar_filename: str, rel_to: Optional[str] = None, **options) -> _T:
-        # --
+    def open(cls: Type[_T], grammar_filename: str, rel_to: Optional[str]=None, **options) -> _T:
+        #--
         if rel_to:
             basepath = os.path.dirname(rel_to)
             grammar_filename = os.path.join(basepath, grammar_filename)
-        with open(grammar_filename, encoding="utf8") as f:
+        with open(grammar_filename, encoding='utf8') as f:
             return cls(f, **options)
 
     @classmethod
-    def open_from_package(
-        cls: Type[_T],
-        package: str,
-        grammar_path: str,
-        search_paths: "Sequence[str]" = [""],
-        **options,
-    ) -> _T:
-        # --
+    def open_from_package(cls: Type[_T], package: str, grammar_path: str, search_paths: 'Sequence[str]'=[""], **options) -> _T:
+        #--
         package_loader = FromPackageLoader(package, search_paths)
         full_path, text = package_loader(None, grammar_path)
-        options.setdefault("source_path", full_path)
-        options.setdefault("import_paths", [])
-        options["import_paths"].append(package_loader)
+        options.setdefault('source_path', full_path)
+        options.setdefault('import_paths', [])
+        options['import_paths'].append(package_loader)
         return cls(text, **options)
 
     def __repr__(self):
-        return "Lark(open(%r), parser=%r, lexer=%r, ...)" % (
-            self.source_path,
-            self.options.parser,
-            self.options.lexer,
-        )
+        return 'Lark(open(%r), parser=%r, lexer=%r, ...)' % (self.source_path, self.options.parser, self.options.lexer)
 
-    def lex(self, text: str, dont_ignore: bool = False) -> Iterator[Token]:
-        # --
+
+    def lex(self, text: str, dont_ignore: bool=False) -> Iterator[Token]:
+        #--
         lexer: Lexer
-        if not hasattr(self, "lexer") or dont_ignore:
+        if not hasattr(self, 'lexer') or dont_ignore:
             lexer = self._build_lexer(dont_ignore)
         else:
             lexer = self.lexer
@@ -3692,31 +3303,25 @@ class Lark(Serialize):
         return stream
 
     def get_terminal(self, name: str) -> TerminalDef:
-        # --
+        #--
         return self._terminals_dict[name]
 
-    def parse_interactive(
-        self, text: Optional[str] = None, start: Optional[str] = None
-    ) -> "InteractiveParser":
-        # --
+    def parse_interactive(self, text: Optional[str]=None, start: Optional[str]=None) -> 'InteractiveParser':
+        #--
         return self.parser.parse_interactive(text, start=start)
 
-    def parse(
-        self,
-        text: str,
-        start: Optional[str] = None,
-        on_error: "Optional[Callable[[UnexpectedInput], bool]]" = None,
-    ) -> "ParseTree":
-        # --
+    def parse(self, text: str, start: Optional[str]=None, on_error: 'Optional[Callable[[UnexpectedInput], bool]]'=None) -> 'ParseTree':
+        #--
         return self.parser.parse(text, start=start, on_error=on_error)
+
+
 
 
 class DedentError(LarkError):
     pass
 
-
 class Indenter(PostLex, ABC):
-    # --
+    #--
     paren_level: int
     indent_level: List[int]
 
@@ -3731,9 +3336,9 @@ class Indenter(PostLex, ABC):
 
         yield token
 
-        indent_str = token.rsplit("\n", 1)[1]  ##
+        indent_str = token.rsplit('\n', 1)[1] ##
 
-        indent = indent_str.count(" ") + indent_str.count("\t") * self.tab_len
+        indent = indent_str.count(' ') + indent_str.count('\t') * self.tab_len
 
         if indent > self.indent_level[-1]:
             self.indent_level.append(indent)
@@ -3744,10 +3349,7 @@ class Indenter(PostLex, ABC):
                 yield Token.new_borrow_pos(self.DEDENT_type, indent_str, token)
 
             if indent != self.indent_level[-1]:
-                raise DedentError(
-                    "Unexpected dedent to column %s. Expected dedent to %s"
-                    % (indent, self.indent_level[-1])
-                )
+                raise DedentError('Unexpected dedent to column %s. Expected dedent to %s' % (indent, self.indent_level[-1]))
 
     def _process(self, stream):
         for token in stream:
@@ -3764,7 +3366,7 @@ class Indenter(PostLex, ABC):
 
         while len(self.indent_level) > 1:
             self.indent_level.pop()
-            yield Token(self.DEDENT_type, "")
+            yield Token(self.DEDENT_type, '')
 
         assert self.indent_level == [0], self.indent_level
 
@@ -3782,5867 +3384,59 @@ class Indenter(PostLex, ABC):
     @property
     @abstractmethod
     def NL_type(self) -> str:
-        # --
+        #--
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def OPEN_PAREN_types(self) -> List[str]:
-        # --
+        #--
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def CLOSE_PAREN_types(self) -> List[str]:
-        # --
+        #--
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def INDENT_type(self) -> str:
-        # --
+        #--
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def DEDENT_type(self) -> str:
-        # --
+        #--
         raise NotImplementedError()
 
     @property
     @abstractmethod
     def tab_len(self) -> int:
-        # --
+        #--
         raise NotImplementedError()
 
 
 class PythonIndenter(Indenter):
-    # --
+    #--
 
-    NL_type = "_NEWLINE"
-    OPEN_PAREN_types = ["LPAR", "LSQB", "LBRACE"]
-    CLOSE_PAREN_types = ["RPAR", "RSQB", "RBRACE"]
-    INDENT_type = "_INDENT"
-    DEDENT_type = "_DEDENT"
+    NL_type = '_NEWLINE'
+    OPEN_PAREN_types = ['LPAR', 'LSQB', 'LBRACE']
+    CLOSE_PAREN_types = ['RPAR', 'RSQB', 'RBRACE']
+    INDENT_type = '_INDENT'
+    DEDENT_type = '_DEDENT'
     tab_len = 8
 
 
 import pickle, zlib, base64
-
-DATA = {
-    "parser": {
-        "lexer_conf": {
-            "terminals": [
-                {"@": 0},
-                {"@": 1},
-                {"@": 2},
-                {"@": 3},
-                {"@": 4},
-                {"@": 5},
-                {"@": 6},
-                {"@": 7},
-                {"@": 8},
-                {"@": 9},
-                {"@": 10},
-                {"@": 11},
-                {"@": 12},
-                {"@": 13},
-                {"@": 14},
-                {"@": 15},
-                {"@": 16},
-                {"@": 17},
-                {"@": 18},
-                {"@": 19},
-                {"@": 20},
-                {"@": 21},
-                {"@": 22},
-                {"@": 23},
-                {"@": 24},
-                {"@": 25},
-                {"@": 26},
-                {"@": 27},
-                {"@": 28},
-                {"@": 29},
-                {"@": 30},
-                {"@": 31},
-                {"@": 32},
-                {"@": 33},
-                {"@": 34},
-                {"@": 35},
-                {"@": 36},
-                {"@": 37},
-                {"@": 38},
-            ],
-            "ignore": ["WS", "C_COMMENT", "CPP_COMMENT"],
-            "g_regex_flags": 0,
-            "use_bytes": False,
-            "lexer_type": "contextual",
-            "__type__": "LexerConf",
-        },
-        "parser_conf": {
-            "rules": [
-                {"@": 39},
-                {"@": 40},
-                {"@": 41},
-                {"@": 42},
-                {"@": 43},
-                {"@": 44},
-                {"@": 45},
-                {"@": 46},
-                {"@": 47},
-                {"@": 48},
-                {"@": 49},
-                {"@": 50},
-                {"@": 51},
-                {"@": 52},
-                {"@": 53},
-                {"@": 54},
-                {"@": 55},
-                {"@": 56},
-                {"@": 57},
-                {"@": 58},
-                {"@": 59},
-                {"@": 60},
-                {"@": 61},
-                {"@": 62},
-                {"@": 63},
-                {"@": 64},
-                {"@": 65},
-                {"@": 66},
-                {"@": 67},
-                {"@": 68},
-                {"@": 69},
-                {"@": 70},
-                {"@": 71},
-                {"@": 72},
-                {"@": 73},
-                {"@": 74},
-                {"@": 75},
-                {"@": 76},
-                {"@": 77},
-                {"@": 78},
-                {"@": 79},
-                {"@": 80},
-                {"@": 81},
-                {"@": 82},
-                {"@": 83},
-                {"@": 84},
-                {"@": 85},
-                {"@": 86},
-                {"@": 87},
-                {"@": 88},
-                {"@": 89},
-                {"@": 90},
-                {"@": 91},
-                {"@": 92},
-                {"@": 93},
-                {"@": 94},
-                {"@": 95},
-                {"@": 96},
-                {"@": 97},
-                {"@": 98},
-                {"@": 99},
-                {"@": 100},
-                {"@": 101},
-                {"@": 102},
-                {"@": 103},
-                {"@": 104},
-                {"@": 105},
-                {"@": 106},
-                {"@": 107},
-                {"@": 108},
-                {"@": 109},
-                {"@": 110},
-                {"@": 111},
-                {"@": 112},
-                {"@": 113},
-                {"@": 114},
-                {"@": 115},
-                {"@": 116},
-                {"@": 117},
-                {"@": 118},
-                {"@": 119},
-                {"@": 120},
-                {"@": 121},
-                {"@": 122},
-                {"@": 123},
-                {"@": 124},
-                {"@": 125},
-                {"@": 126},
-                {"@": 127},
-                {"@": 128},
-                {"@": 129},
-                {"@": 130},
-                {"@": 131},
-                {"@": 132},
-                {"@": 133},
-                {"@": 134},
-                {"@": 135},
-                {"@": 136},
-                {"@": 137},
-                {"@": 138},
-                {"@": 139},
-                {"@": 140},
-                {"@": 141},
-                {"@": 142},
-                {"@": 143},
-                {"@": 144},
-                {"@": 145},
-                {"@": 146},
-                {"@": 147},
-                {"@": 148},
-                {"@": 149},
-                {"@": 150},
-                {"@": 151},
-                {"@": 152},
-                {"@": 153},
-                {"@": 154},
-                {"@": 155},
-                {"@": 156},
-                {"@": 157},
-                {"@": 158},
-                {"@": 159},
-                {"@": 160},
-                {"@": 161},
-                {"@": 162},
-                {"@": 163},
-                {"@": 164},
-                {"@": 165},
-                {"@": 166},
-                {"@": 167},
-                {"@": 168},
-                {"@": 169},
-                {"@": 170},
-                {"@": 171},
-                {"@": 172},
-                {"@": 173},
-                {"@": 174},
-            ],
-            "start": ["start"],
-            "parser_type": "lalr",
-            "__type__": "ParserConf",
-        },
-        "parser": {
-            "tokens": {
-                0: "RPAR",
-                1: "LOR",
-                2: "btype",
-                3: "INT_T",
-                4: "FLOAT_T",
-                5: "func_fparam",
-                6: "ident",
-                7: "func_call",
-                8: "INT",
-                9: "NAME",
-                10: "MINUS",
-                11: "number",
-                12: "lval",
-                13: "FLOAT",
-                14: "unary_exp",
-                15: "PLUS",
-                16: "NOT",
-                17: "LPAR",
-                18: "MUL",
-                19: "RBRACKET",
-                20: "EQ",
-                21: "RBRACE",
-                22: "GTE",
-                23: "LTE",
-                24: "COMMA",
-                25: "MOD",
-                26: "NEQ",
-                27: "LAND",
-                28: "GT",
-                29: "SEMICOLON",
-                30: "DIV",
-                31: "LT",
-                32: "signed_number",
-                33: "__func_call_star_13",
-                34: "ELSE",
-                35: "BREAK",
-                36: "LBRACE",
-                37: "IF",
-                38: "WHILE",
-                39: "RETURN",
-                40: "CONST",
-                41: "CONTINUE",
-                42: "__comp_unit_plus_0",
-                43: "const_decl",
-                44: "VOID_T",
-                45: "start",
-                46: "var_decl",
-                47: "func_def",
-                48: "comp_unit",
-                49: "__init_val_star_4",
-                50: "mul_exp",
-                51: "add_exp",
-                52: "exp",
-                53: "EQUAL",
-                54: "LBRACKET",
-                55: "init_val",
-                56: "const_init_val",
-                57: "$END",
-                58: "while_stmt",
-                59: "if_stmt",
-                60: "break_stmt",
-                61: "stmt",
-                62: "continue_stmt",
-                63: "return_stmt",
-                64: "assign_stmt",
-                65: "empty_stmt",
-                66: "exp_stmt",
-                67: "block",
-                68: "rel_exp",
-                69: "eq_exp",
-                70: "__var_decl_star_3",
-                71: "__rel_exp_star_10",
-                72: "var_def",
-                73: "func_rparam",
-                74: "__add_exp_star_11",
-                75: "block_item",
-                76: "__const_init_val_star_2",
-                77: "lor_exp",
-                78: "land_exp",
-                79: "cond",
-                80: "const_def",
-                81: "__land_exp_star_8",
-                82: "__lor_exp_star_7",
-                83: "__func_def_star_5",
-                84: "__const_decl_star_1",
-                85: "__block_star_6",
-                86: "__mul_exp_star_12",
-                87: "__eq_exp_star_9",
-            },
-            "states": {
-                0: {0: (1, {"@": 147}), 1: (1, {"@": 147})},
-                1: {0: (0, 218), 2: (0, 249), 3: (0, 165), 4: (0, 115), 5: (0, 205)},
-                2: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    13: (0, 154),
-                    14: (0, 38),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                3: {
-                    18: (1, {"@": 122}),
-                    15: (1, {"@": 122}),
-                    19: (1, {"@": 122}),
-                    20: (1, {"@": 122}),
-                    21: (1, {"@": 122}),
-                    22: (1, {"@": 122}),
-                    23: (1, {"@": 122}),
-                    24: (1, {"@": 122}),
-                    25: (1, {"@": 122}),
-                    26: (1, {"@": 122}),
-                    27: (1, {"@": 122}),
-                    28: (1, {"@": 122}),
-                    29: (1, {"@": 122}),
-                    30: (1, {"@": 122}),
-                    0: (1, {"@": 122}),
-                    1: (1, {"@": 122}),
-                    31: (1, {"@": 122}),
-                    10: (1, {"@": 122}),
-                },
-                4: {24: (0, 51), 21: (0, 157)},
-                5: {
-                    18: (1, {"@": 113}),
-                    15: (1, {"@": 113}),
-                    19: (1, {"@": 113}),
-                    20: (1, {"@": 113}),
-                    21: (1, {"@": 113}),
-                    22: (1, {"@": 113}),
-                    23: (1, {"@": 113}),
-                    24: (1, {"@": 113}),
-                    25: (1, {"@": 113}),
-                    26: (1, {"@": 113}),
-                    27: (1, {"@": 113}),
-                    28: (1, {"@": 113}),
-                    29: (1, {"@": 113}),
-                    30: (1, {"@": 113}),
-                    0: (1, {"@": 113}),
-                    1: (1, {"@": 113}),
-                    31: (1, {"@": 113}),
-                    10: (1, {"@": 113}),
-                },
-                6: {
-                    15: (0, 130),
-                    8: (0, 14),
-                    10: (0, 71),
-                    32: (0, 36),
-                    11: (0, 201),
-                    13: (0, 154),
-                },
-                7: {24: (0, 192), 33: (0, 184), 0: (0, 97)},
-                8: {29: (1, {"@": 59}), 24: (1, {"@": 59})},
-                9: {
-                    34: (0, 44),
-                    15: (1, {"@": 93}),
-                    17: (1, {"@": 93}),
-                    8: (1, {"@": 93}),
-                    3: (1, {"@": 93}),
-                    13: (1, {"@": 93}),
-                    21: (1, {"@": 93}),
-                    10: (1, {"@": 93}),
-                    35: (1, {"@": 93}),
-                    36: (1, {"@": 93}),
-                    4: (1, {"@": 93}),
-                    16: (1, {"@": 93}),
-                    29: (1, {"@": 93}),
-                    37: (1, {"@": 93}),
-                    38: (1, {"@": 93}),
-                    39: (1, {"@": 93}),
-                    40: (1, {"@": 93}),
-                    9: (1, {"@": 93}),
-                    41: (1, {"@": 93}),
-                },
-                10: {
-                    42: (0, 214),
-                    3: (0, 165),
-                    4: (0, 115),
-                    2: (0, 109),
-                    40: (0, 133),
-                    43: (0, 228),
-                    44: (0, 52),
-                    45: (0, 59),
-                    46: (0, 132),
-                    47: (0, 112),
-                    48: (0, 120),
-                },
-                11: {21: (0, 15), 24: (0, 12), 49: (0, 76)},
-                12: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    52: (0, 195),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                13: {
-                    18: (1, {"@": 124}),
-                    15: (1, {"@": 124}),
-                    19: (1, {"@": 124}),
-                    20: (1, {"@": 124}),
-                    21: (1, {"@": 124}),
-                    22: (1, {"@": 124}),
-                    23: (1, {"@": 124}),
-                    24: (1, {"@": 124}),
-                    25: (1, {"@": 124}),
-                    26: (1, {"@": 124}),
-                    27: (1, {"@": 124}),
-                    28: (1, {"@": 124}),
-                    29: (1, {"@": 124}),
-                    30: (1, {"@": 124}),
-                    0: (1, {"@": 124}),
-                    1: (1, {"@": 124}),
-                    31: (1, {"@": 124}),
-                    10: (1, {"@": 124}),
-                    53: (1, {"@": 124}),
-                },
-                14: {
-                    18: (1, {"@": 126}),
-                    15: (1, {"@": 126}),
-                    19: (1, {"@": 126}),
-                    20: (1, {"@": 126}),
-                    21: (1, {"@": 126}),
-                    22: (1, {"@": 126}),
-                    23: (1, {"@": 126}),
-                    24: (1, {"@": 126}),
-                    25: (1, {"@": 126}),
-                    26: (1, {"@": 126}),
-                    27: (1, {"@": 126}),
-                    28: (1, {"@": 126}),
-                    29: (1, {"@": 126}),
-                    30: (1, {"@": 126}),
-                    0: (1, {"@": 126}),
-                    1: (1, {"@": 126}),
-                    31: (1, {"@": 126}),
-                    10: (1, {"@": 126}),
-                },
-                15: {29: (1, {"@": 66}), 24: (1, {"@": 66})},
-                16: {
-                    15: (1, {"@": 98}),
-                    17: (1, {"@": 98}),
-                    8: (1, {"@": 98}),
-                    3: (1, {"@": 98}),
-                    13: (1, {"@": 98}),
-                    21: (1, {"@": 98}),
-                    10: (1, {"@": 98}),
-                    35: (1, {"@": 98}),
-                    36: (1, {"@": 98}),
-                    4: (1, {"@": 98}),
-                    16: (1, {"@": 98}),
-                    29: (1, {"@": 98}),
-                    37: (1, {"@": 98}),
-                    38: (1, {"@": 98}),
-                    39: (1, {"@": 98}),
-                    40: (1, {"@": 98}),
-                    34: (1, {"@": 98}),
-                    9: (1, {"@": 98}),
-                    41: (1, {"@": 98}),
-                },
-                17: {0: (1, {"@": 73}), 24: (1, {"@": 73})},
-                18: {54: (0, 187), 0: (1, {"@": 74}), 24: (1, {"@": 74})},
-                19: {29: (1, {"@": 46}), 24: (1, {"@": 46})},
-                20: {
-                    0: (1, {"@": 154}),
-                    1: (1, {"@": 154}),
-                    26: (1, {"@": 154}),
-                    20: (1, {"@": 154}),
-                    27: (1, {"@": 154}),
-                },
-                21: {
-                    26: (1, {"@": 159}),
-                    27: (1, {"@": 159}),
-                    28: (1, {"@": 159}),
-                    20: (1, {"@": 159}),
-                    22: (1, {"@": 159}),
-                    23: (1, {"@": 159}),
-                    0: (1, {"@": 159}),
-                    31: (1, {"@": 159}),
-                    1: (1, {"@": 159}),
-                },
-                22: {
-                    18: (1, {"@": 119}),
-                    15: (1, {"@": 119}),
-                    19: (1, {"@": 119}),
-                    20: (1, {"@": 119}),
-                    21: (1, {"@": 119}),
-                    22: (1, {"@": 119}),
-                    23: (1, {"@": 119}),
-                    24: (1, {"@": 119}),
-                    25: (1, {"@": 119}),
-                    26: (1, {"@": 119}),
-                    27: (1, {"@": 119}),
-                    28: (1, {"@": 119}),
-                    29: (1, {"@": 119}),
-                    30: (1, {"@": 119}),
-                    0: (1, {"@": 119}),
-                    1: (1, {"@": 119}),
-                    31: (1, {"@": 119}),
-                    10: (1, {"@": 119}),
-                },
-                23: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    36: (0, 84),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    7: (0, 80),
-                    55: (0, 8),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                    52: (0, 142),
-                },
-                24: {
-                    18: (1, {"@": 169}),
-                    15: (1, {"@": 169}),
-                    19: (1, {"@": 169}),
-                    20: (1, {"@": 169}),
-                    21: (1, {"@": 169}),
-                    22: (1, {"@": 169}),
-                    23: (1, {"@": 169}),
-                    24: (1, {"@": 169}),
-                    25: (1, {"@": 169}),
-                    26: (1, {"@": 169}),
-                    27: (1, {"@": 169}),
-                    28: (1, {"@": 169}),
-                    29: (1, {"@": 169}),
-                    30: (1, {"@": 169}),
-                    0: (1, {"@": 169}),
-                    1: (1, {"@": 169}),
-                    31: (1, {"@": 169}),
-                    10: (1, {"@": 169}),
-                },
-                25: {
-                    26: (1, {"@": 160}),
-                    27: (1, {"@": 160}),
-                    28: (1, {"@": 160}),
-                    20: (1, {"@": 160}),
-                    22: (1, {"@": 160}),
-                    23: (1, {"@": 160}),
-                    0: (1, {"@": 160}),
-                    31: (1, {"@": 160}),
-                    1: (1, {"@": 160}),
-                },
-                26: {0: (0, 156), 24: (0, 110)},
-                27: {
-                    15: (0, 130),
-                    8: (0, 14),
-                    10: (0, 71),
-                    36: (0, 167),
-                    56: (0, 180),
-                    11: (0, 201),
-                    13: (0, 154),
-                    32: (0, 173),
-                },
-                28: {0: (1, {"@": 149}), 1: (1, {"@": 149}), 27: (1, {"@": 149})},
-                29: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    36: (0, 84),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    55: (0, 141),
-                    12: (0, 166),
-                    13: (0, 154),
-                    52: (0, 142),
-                },
-                30: {
-                    0: (1, {"@": 153}),
-                    1: (1, {"@": 153}),
-                    26: (1, {"@": 153}),
-                    20: (1, {"@": 153}),
-                    27: (1, {"@": 153}),
-                },
-                31: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    14: (0, 221),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                32: {
-                    15: (0, 130),
-                    8: (0, 14),
-                    10: (0, 71),
-                    36: (0, 167),
-                    11: (0, 201),
-                    56: (0, 19),
-                    13: (0, 154),
-                    32: (0, 173),
-                },
-                33: {19: (0, 181)},
-                34: {19: (0, 185), 8: (0, 210)},
-                35: {
-                    15: (1, {"@": 75}),
-                    17: (1, {"@": 75}),
-                    8: (1, {"@": 75}),
-                    3: (1, {"@": 75}),
-                    13: (1, {"@": 75}),
-                    21: (1, {"@": 75}),
-                    10: (1, {"@": 75}),
-                    35: (1, {"@": 75}),
-                    36: (1, {"@": 75}),
-                    4: (1, {"@": 75}),
-                    16: (1, {"@": 75}),
-                    29: (1, {"@": 75}),
-                    37: (1, {"@": 75}),
-                    38: (1, {"@": 75}),
-                    39: (1, {"@": 75}),
-                    40: (1, {"@": 75}),
-                    34: (1, {"@": 75}),
-                    9: (1, {"@": 75}),
-                    41: (1, {"@": 75}),
-                    44: (1, {"@": 75}),
-                    57: (1, {"@": 75}),
-                },
-                36: {21: (1, {"@": 137}), 24: (1, {"@": 137})},
-                37: {2: (0, 249), 3: (0, 165), 4: (0, 115), 5: (0, 209)},
-                38: {
-                    18: (1, {"@": 168}),
-                    15: (1, {"@": 168}),
-                    19: (1, {"@": 168}),
-                    20: (1, {"@": 168}),
-                    21: (1, {"@": 168}),
-                    22: (1, {"@": 168}),
-                    23: (1, {"@": 168}),
-                    24: (1, {"@": 168}),
-                    25: (1, {"@": 168}),
-                    26: (1, {"@": 168}),
-                    27: (1, {"@": 168}),
-                    28: (1, {"@": 168}),
-                    29: (1, {"@": 168}),
-                    30: (1, {"@": 168}),
-                    0: (1, {"@": 168}),
-                    1: (1, {"@": 168}),
-                    31: (1, {"@": 168}),
-                    10: (1, {"@": 168}),
-                },
-                39: {0: (0, 99)},
-                40: {
-                    15: (1, {"@": 94}),
-                    17: (1, {"@": 94}),
-                    8: (1, {"@": 94}),
-                    3: (1, {"@": 94}),
-                    13: (1, {"@": 94}),
-                    21: (1, {"@": 94}),
-                    10: (1, {"@": 94}),
-                    35: (1, {"@": 94}),
-                    36: (1, {"@": 94}),
-                    4: (1, {"@": 94}),
-                    16: (1, {"@": 94}),
-                    29: (1, {"@": 94}),
-                    37: (1, {"@": 94}),
-                    38: (1, {"@": 94}),
-                    39: (1, {"@": 94}),
-                    40: (1, {"@": 94}),
-                    34: (1, {"@": 94}),
-                    9: (1, {"@": 94}),
-                    41: (1, {"@": 94}),
-                },
-                41: {0: (1, {"@": 100})},
-                42: {
-                    26: (1, {"@": 161}),
-                    27: (1, {"@": 161}),
-                    28: (1, {"@": 161}),
-                    20: (1, {"@": 161}),
-                    22: (1, {"@": 161}),
-                    23: (1, {"@": 161}),
-                    0: (1, {"@": 161}),
-                    31: (1, {"@": 161}),
-                    1: (1, {"@": 161}),
-                },
-                43: {
-                    26: (1, {"@": 162}),
-                    27: (1, {"@": 162}),
-                    28: (1, {"@": 162}),
-                    20: (1, {"@": 162}),
-                    22: (1, {"@": 162}),
-                    23: (1, {"@": 162}),
-                    0: (1, {"@": 162}),
-                    31: (1, {"@": 162}),
-                    1: (1, {"@": 162}),
-                },
-                44: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    58: (0, 102),
-                    35: (0, 83),
-                    11: (0, 94),
-                    50: (0, 88),
-                    37: (0, 87),
-                    59: (0, 72),
-                    36: (0, 204),
-                    60: (0, 89),
-                    15: (0, 62),
-                    61: (0, 67),
-                    39: (0, 73),
-                    51: (0, 55),
-                    41: (0, 113),
-                    62: (0, 111),
-                    12: (0, 91),
-                    7: (0, 80),
-                    38: (0, 66),
-                    52: (0, 106),
-                    14: (0, 216),
-                    63: (0, 47),
-                    10: (0, 139),
-                    64: (0, 107),
-                    65: (0, 78),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    66: (0, 60),
-                    13: (0, 154),
-                    67: (0, 49),
-                    29: (0, 202),
-                },
-                45: {
-                    68: (0, 240),
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    69: (0, 54),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                46: {
-                    31: (0, 207),
-                    28: (0, 215),
-                    23: (0, 222),
-                    22: (0, 234),
-                    0: (1, {"@": 107}),
-                    1: (1, {"@": 107}),
-                    26: (1, {"@": 107}),
-                    20: (1, {"@": 107}),
-                    27: (1, {"@": 107}),
-                },
-                47: {
-                    15: (1, {"@": 88}),
-                    17: (1, {"@": 88}),
-                    8: (1, {"@": 88}),
-                    3: (1, {"@": 88}),
-                    13: (1, {"@": 88}),
-                    21: (1, {"@": 88}),
-                    10: (1, {"@": 88}),
-                    35: (1, {"@": 88}),
-                    36: (1, {"@": 88}),
-                    4: (1, {"@": 88}),
-                    16: (1, {"@": 88}),
-                    29: (1, {"@": 88}),
-                    37: (1, {"@": 88}),
-                    38: (1, {"@": 88}),
-                    39: (1, {"@": 88}),
-                    40: (1, {"@": 88}),
-                    34: (1, {"@": 88}),
-                    9: (1, {"@": 88}),
-                    41: (1, {"@": 88}),
-                },
-                48: {24: (0, 169), 70: (0, 158), 29: (0, 75)},
-                49: {
-                    15: (1, {"@": 83}),
-                    17: (1, {"@": 83}),
-                    8: (1, {"@": 83}),
-                    3: (1, {"@": 83}),
-                    13: (1, {"@": 83}),
-                    21: (1, {"@": 83}),
-                    10: (1, {"@": 83}),
-                    35: (1, {"@": 83}),
-                    36: (1, {"@": 83}),
-                    4: (1, {"@": 83}),
-                    16: (1, {"@": 83}),
-                    29: (1, {"@": 83}),
-                    37: (1, {"@": 83}),
-                    38: (1, {"@": 83}),
-                    39: (1, {"@": 83}),
-                    40: (1, {"@": 83}),
-                    34: (1, {"@": 83}),
-                    9: (1, {"@": 83}),
-                    41: (1, {"@": 83}),
-                },
-                50: {
-                    71: (0, 46),
-                    23: (0, 105),
-                    31: (0, 151),
-                    22: (0, 161),
-                    28: (0, 170),
-                    0: (1, {"@": 108}),
-                    1: (1, {"@": 108}),
-                    26: (1, {"@": 108}),
-                    20: (1, {"@": 108}),
-                    27: (1, {"@": 108}),
-                },
-                51: {
-                    15: (0, 130),
-                    8: (0, 14),
-                    32: (0, 174),
-                    10: (0, 71),
-                    11: (0, 201),
-                    13: (0, 154),
-                },
-                52: {6: (0, 175), 9: (0, 172)},
-                53: {19: (0, 82), 8: (0, 33)},
-                54: {0: (1, {"@": 150}), 1: (1, {"@": 150}), 27: (1, {"@": 150})},
-                55: {
-                    21: (1, {"@": 99}),
-                    24: (1, {"@": 99}),
-                    29: (1, {"@": 99}),
-                    0: (1, {"@": 99}),
-                    19: (1, {"@": 99}),
-                },
-                56: {72: (0, 48), 6: (0, 122), 9: (0, 172)},
-                57: {29: (1, {"@": 51}), 24: (1, {"@": 51})},
-                58: {
-                    15: (1, {"@": 97}),
-                    17: (1, {"@": 97}),
-                    8: (1, {"@": 97}),
-                    3: (1, {"@": 97}),
-                    13: (1, {"@": 97}),
-                    21: (1, {"@": 97}),
-                    10: (1, {"@": 97}),
-                    35: (1, {"@": 97}),
-                    36: (1, {"@": 97}),
-                    4: (1, {"@": 97}),
-                    16: (1, {"@": 97}),
-                    29: (1, {"@": 97}),
-                    37: (1, {"@": 97}),
-                    38: (1, {"@": 97}),
-                    39: (1, {"@": 97}),
-                    40: (1, {"@": 97}),
-                    34: (1, {"@": 97}),
-                    9: (1, {"@": 97}),
-                    41: (1, {"@": 97}),
-                },
-                59: {},
-                60: {
-                    15: (1, {"@": 82}),
-                    17: (1, {"@": 82}),
-                    8: (1, {"@": 82}),
-                    3: (1, {"@": 82}),
-                    13: (1, {"@": 82}),
-                    21: (1, {"@": 82}),
-                    10: (1, {"@": 82}),
-                    35: (1, {"@": 82}),
-                    36: (1, {"@": 82}),
-                    4: (1, {"@": 82}),
-                    16: (1, {"@": 82}),
-                    29: (1, {"@": 82}),
-                    37: (1, {"@": 82}),
-                    38: (1, {"@": 82}),
-                    39: (1, {"@": 82}),
-                    40: (1, {"@": 82}),
-                    34: (1, {"@": 82}),
-                    9: (1, {"@": 82}),
-                    41: (1, {"@": 82}),
-                },
-                61: {0: (1, {"@": 148}), 1: (1, {"@": 148})},
-                62: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    14: (0, 144),
-                    12: (0, 166),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                63: {
-                    14: (0, 24),
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                64: {54: (0, 34), 53: (0, 103)},
-                65: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    50: (0, 227),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    14: (0, 216),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                66: {17: (0, 127)},
-                67: {
-                    15: (1, {"@": 92}),
-                    17: (1, {"@": 92}),
-                    8: (1, {"@": 92}),
-                    3: (1, {"@": 92}),
-                    13: (1, {"@": 92}),
-                    21: (1, {"@": 92}),
-                    10: (1, {"@": 92}),
-                    35: (1, {"@": 92}),
-                    36: (1, {"@": 92}),
-                    4: (1, {"@": 92}),
-                    16: (1, {"@": 92}),
-                    29: (1, {"@": 92}),
-                    37: (1, {"@": 92}),
-                    38: (1, {"@": 92}),
-                    39: (1, {"@": 92}),
-                    40: (1, {"@": 92}),
-                    34: (1, {"@": 92}),
-                    9: (1, {"@": 92}),
-                    41: (1, {"@": 92}),
-                },
-                68: {0: (1, {"@": 123}), 24: (1, {"@": 123})},
-                69: {21: (1, {"@": 52}), 24: (1, {"@": 52}), 29: (1, {"@": 52})},
-                70: {
-                    15: (1, {"@": 95}),
-                    17: (1, {"@": 95}),
-                    8: (1, {"@": 95}),
-                    3: (1, {"@": 95}),
-                    13: (1, {"@": 95}),
-                    21: (1, {"@": 95}),
-                    10: (1, {"@": 95}),
-                    35: (1, {"@": 95}),
-                    36: (1, {"@": 95}),
-                    4: (1, {"@": 95}),
-                    16: (1, {"@": 95}),
-                    29: (1, {"@": 95}),
-                    37: (1, {"@": 95}),
-                    38: (1, {"@": 95}),
-                    39: (1, {"@": 95}),
-                    40: (1, {"@": 95}),
-                    34: (1, {"@": 95}),
-                    9: (1, {"@": 95}),
-                    41: (1, {"@": 95}),
-                },
-                71: {8: (0, 14), 11: (0, 191), 13: (0, 154)},
-                72: {
-                    15: (1, {"@": 84}),
-                    17: (1, {"@": 84}),
-                    8: (1, {"@": 84}),
-                    3: (1, {"@": 84}),
-                    13: (1, {"@": 84}),
-                    21: (1, {"@": 84}),
-                    10: (1, {"@": 84}),
-                    35: (1, {"@": 84}),
-                    36: (1, {"@": 84}),
-                    4: (1, {"@": 84}),
-                    16: (1, {"@": 84}),
-                    29: (1, {"@": 84}),
-                    37: (1, {"@": 84}),
-                    38: (1, {"@": 84}),
-                    39: (1, {"@": 84}),
-                    40: (1, {"@": 84}),
-                    34: (1, {"@": 84}),
-                    9: (1, {"@": 84}),
-                    41: (1, {"@": 84}),
-                },
-                73: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    52: (0, 117),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                    29: (0, 16),
-                },
-                74: {
-                    3: (1, {"@": 55}),
-                    4: (1, {"@": 55}),
-                    40: (1, {"@": 55}),
-                    44: (1, {"@": 55}),
-                    57: (1, {"@": 55}),
-                    15: (1, {"@": 55}),
-                    17: (1, {"@": 55}),
-                    8: (1, {"@": 55}),
-                    13: (1, {"@": 55}),
-                    21: (1, {"@": 55}),
-                    35: (1, {"@": 55}),
-                    36: (1, {"@": 55}),
-                    16: (1, {"@": 55}),
-                    29: (1, {"@": 55}),
-                    41: (1, {"@": 55}),
-                    37: (1, {"@": 55}),
-                    39: (1, {"@": 55}),
-                    38: (1, {"@": 55}),
-                    9: (1, {"@": 55}),
-                    10: (1, {"@": 55}),
-                },
-                75: {
-                    3: (1, {"@": 56}),
-                    4: (1, {"@": 56}),
-                    40: (1, {"@": 56}),
-                    44: (1, {"@": 56}),
-                    57: (1, {"@": 56}),
-                    15: (1, {"@": 56}),
-                    17: (1, {"@": 56}),
-                    8: (1, {"@": 56}),
-                    13: (1, {"@": 56}),
-                    21: (1, {"@": 56}),
-                    35: (1, {"@": 56}),
-                    36: (1, {"@": 56}),
-                    16: (1, {"@": 56}),
-                    29: (1, {"@": 56}),
-                    41: (1, {"@": 56}),
-                    37: (1, {"@": 56}),
-                    39: (1, {"@": 56}),
-                    38: (1, {"@": 56}),
-                    9: (1, {"@": 56}),
-                    10: (1, {"@": 56}),
-                },
-                76: {24: (0, 244), 21: (0, 90)},
-                77: {
-                    3: (1, {"@": 71}),
-                    4: (1, {"@": 71}),
-                    40: (1, {"@": 71}),
-                    44: (1, {"@": 71}),
-                    57: (1, {"@": 71}),
-                },
-                78: {
-                    15: (1, {"@": 81}),
-                    17: (1, {"@": 81}),
-                    8: (1, {"@": 81}),
-                    3: (1, {"@": 81}),
-                    13: (1, {"@": 81}),
-                    21: (1, {"@": 81}),
-                    10: (1, {"@": 81}),
-                    35: (1, {"@": 81}),
-                    36: (1, {"@": 81}),
-                    4: (1, {"@": 81}),
-                    16: (1, {"@": 81}),
-                    29: (1, {"@": 81}),
-                    37: (1, {"@": 81}),
-                    38: (1, {"@": 81}),
-                    39: (1, {"@": 81}),
-                    40: (1, {"@": 81}),
-                    34: (1, {"@": 81}),
-                    9: (1, {"@": 81}),
-                    41: (1, {"@": 81}),
-                },
-                79: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    73: (0, 128),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    52: (0, 68),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                80: {
-                    18: (1, {"@": 116}),
-                    15: (1, {"@": 116}),
-                    19: (1, {"@": 116}),
-                    20: (1, {"@": 116}),
-                    21: (1, {"@": 116}),
-                    22: (1, {"@": 116}),
-                    23: (1, {"@": 116}),
-                    24: (1, {"@": 116}),
-                    25: (1, {"@": 116}),
-                    26: (1, {"@": 116}),
-                    27: (1, {"@": 116}),
-                    28: (1, {"@": 116}),
-                    29: (1, {"@": 116}),
-                    30: (1, {"@": 116}),
-                    0: (1, {"@": 116}),
-                    1: (1, {"@": 116}),
-                    31: (1, {"@": 116}),
-                    10: (1, {"@": 116}),
-                },
-                81: {0: (0, 93), 24: (0, 110)},
-                82: {53: (0, 23), 29: (1, {"@": 60}), 24: (1, {"@": 60})},
-                83: {29: (0, 70)},
-                84: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    21: (0, 146),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    52: (0, 11),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                85: {
-                    15: (1, {"@": 146}),
-                    17: (1, {"@": 146}),
-                    35: (1, {"@": 146}),
-                    8: (1, {"@": 146}),
-                    36: (1, {"@": 146}),
-                    3: (1, {"@": 146}),
-                    4: (1, {"@": 146}),
-                    13: (1, {"@": 146}),
-                    16: (1, {"@": 146}),
-                    29: (1, {"@": 146}),
-                    21: (1, {"@": 146}),
-                    37: (1, {"@": 146}),
-                    39: (1, {"@": 146}),
-                    38: (1, {"@": 146}),
-                    40: (1, {"@": 146}),
-                    10: (1, {"@": 146}),
-                    9: (1, {"@": 146}),
-                    41: (1, {"@": 146}),
-                },
-                86: {29: (1, {"@": 136}), 24: (1, {"@": 136})},
-                87: {17: (0, 159)},
-                88: {
-                    15: (0, 143),
-                    74: (0, 183),
-                    10: (0, 65),
-                    21: (1, {"@": 110}),
-                    24: (1, {"@": 110}),
-                    29: (1, {"@": 110}),
-                    26: (1, {"@": 110}),
-                    27: (1, {"@": 110}),
-                    28: (1, {"@": 110}),
-                    20: (1, {"@": 110}),
-                    22: (1, {"@": 110}),
-                    23: (1, {"@": 110}),
-                    0: (1, {"@": 110}),
-                    31: (1, {"@": 110}),
-                    1: (1, {"@": 110}),
-                    19: (1, {"@": 110}),
-                },
-                89: {
-                    15: (1, {"@": 86}),
-                    17: (1, {"@": 86}),
-                    8: (1, {"@": 86}),
-                    3: (1, {"@": 86}),
-                    13: (1, {"@": 86}),
-                    21: (1, {"@": 86}),
-                    10: (1, {"@": 86}),
-                    35: (1, {"@": 86}),
-                    36: (1, {"@": 86}),
-                    4: (1, {"@": 86}),
-                    16: (1, {"@": 86}),
-                    29: (1, {"@": 86}),
-                    37: (1, {"@": 86}),
-                    38: (1, {"@": 86}),
-                    39: (1, {"@": 86}),
-                    40: (1, {"@": 86}),
-                    34: (1, {"@": 86}),
-                    9: (1, {"@": 86}),
-                    41: (1, {"@": 86}),
-                },
-                90: {29: (1, {"@": 65}), 24: (1, {"@": 65})},
-                91: {
-                    53: (0, 134),
-                    18: (1, {"@": 114}),
-                    15: (1, {"@": 114}),
-                    25: (1, {"@": 114}),
-                    29: (1, {"@": 114}),
-                    30: (1, {"@": 114}),
-                    10: (1, {"@": 114}),
-                },
-                92: {
-                    15: (1, {"@": 76}),
-                    17: (1, {"@": 76}),
-                    8: (1, {"@": 76}),
-                    3: (1, {"@": 76}),
-                    13: (1, {"@": 76}),
-                    21: (1, {"@": 76}),
-                    10: (1, {"@": 76}),
-                    35: (1, {"@": 76}),
-                    36: (1, {"@": 76}),
-                    4: (1, {"@": 76}),
-                    16: (1, {"@": 76}),
-                    29: (1, {"@": 76}),
-                    37: (1, {"@": 76}),
-                    38: (1, {"@": 76}),
-                    39: (1, {"@": 76}),
-                    40: (1, {"@": 76}),
-                    34: (1, {"@": 76}),
-                    9: (1, {"@": 76}),
-                    41: (1, {"@": 76}),
-                    44: (1, {"@": 76}),
-                    57: (1, {"@": 76}),
-                },
-                93: {36: (0, 204), 67: (0, 212)},
-                94: {
-                    18: (1, {"@": 115}),
-                    15: (1, {"@": 115}),
-                    19: (1, {"@": 115}),
-                    20: (1, {"@": 115}),
-                    21: (1, {"@": 115}),
-                    22: (1, {"@": 115}),
-                    23: (1, {"@": 115}),
-                    24: (1, {"@": 115}),
-                    25: (1, {"@": 115}),
-                    26: (1, {"@": 115}),
-                    27: (1, {"@": 115}),
-                    28: (1, {"@": 115}),
-                    29: (1, {"@": 115}),
-                    30: (1, {"@": 115}),
-                    0: (1, {"@": 115}),
-                    1: (1, {"@": 115}),
-                    31: (1, {"@": 115}),
-                    10: (1, {"@": 115}),
-                },
-                95: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    14: (0, 22),
-                    12: (0, 166),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                96: {
-                    15: (1, {"@": 78}),
-                    17: (1, {"@": 78}),
-                    8: (1, {"@": 78}),
-                    3: (1, {"@": 78}),
-                    13: (1, {"@": 78}),
-                    21: (1, {"@": 78}),
-                    35: (1, {"@": 78}),
-                    36: (1, {"@": 78}),
-                    4: (1, {"@": 78}),
-                    16: (1, {"@": 78}),
-                    29: (1, {"@": 78}),
-                    41: (1, {"@": 78}),
-                    37: (1, {"@": 78}),
-                    39: (1, {"@": 78}),
-                    38: (1, {"@": 78}),
-                    40: (1, {"@": 78}),
-                    9: (1, {"@": 78}),
-                    10: (1, {"@": 78}),
-                },
-                97: {
-                    18: (1, {"@": 121}),
-                    15: (1, {"@": 121}),
-                    19: (1, {"@": 121}),
-                    20: (1, {"@": 121}),
-                    21: (1, {"@": 121}),
-                    22: (1, {"@": 121}),
-                    23: (1, {"@": 121}),
-                    24: (1, {"@": 121}),
-                    25: (1, {"@": 121}),
-                    26: (1, {"@": 121}),
-                    27: (1, {"@": 121}),
-                    28: (1, {"@": 121}),
-                    29: (1, {"@": 121}),
-                    30: (1, {"@": 121}),
-                    0: (1, {"@": 121}),
-                    1: (1, {"@": 121}),
-                    31: (1, {"@": 121}),
-                    10: (1, {"@": 121}),
-                },
-                98: {
-                    15: (1, {"@": 77}),
-                    17: (1, {"@": 77}),
-                    8: (1, {"@": 77}),
-                    3: (1, {"@": 77}),
-                    13: (1, {"@": 77}),
-                    21: (1, {"@": 77}),
-                    35: (1, {"@": 77}),
-                    36: (1, {"@": 77}),
-                    4: (1, {"@": 77}),
-                    16: (1, {"@": 77}),
-                    29: (1, {"@": 77}),
-                    41: (1, {"@": 77}),
-                    37: (1, {"@": 77}),
-                    39: (1, {"@": 77}),
-                    38: (1, {"@": 77}),
-                    40: (1, {"@": 77}),
-                    9: (1, {"@": 77}),
-                    10: (1, {"@": 77}),
-                },
-                99: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    58: (0, 102),
-                    35: (0, 83),
-                    11: (0, 94),
-                    50: (0, 88),
-                    37: (0, 87),
-                    59: (0, 72),
-                    36: (0, 204),
-                    60: (0, 89),
-                    15: (0, 62),
-                    39: (0, 73),
-                    51: (0, 55),
-                    41: (0, 113),
-                    62: (0, 111),
-                    61: (0, 9),
-                    12: (0, 91),
-                    7: (0, 80),
-                    38: (0, 66),
-                    52: (0, 106),
-                    14: (0, 216),
-                    63: (0, 47),
-                    10: (0, 139),
-                    64: (0, 107),
-                    65: (0, 78),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    66: (0, 60),
-                    13: (0, 154),
-                    67: (0, 49),
-                    29: (0, 202),
-                },
-                100: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    58: (0, 102),
-                    35: (0, 83),
-                    3: (0, 165),
-                    4: (0, 115),
-                    2: (0, 56),
-                    11: (0, 94),
-                    40: (0, 133),
-                    50: (0, 88),
-                    37: (0, 87),
-                    59: (0, 72),
-                    36: (0, 204),
-                    60: (0, 89),
-                    15: (0, 62),
-                    39: (0, 73),
-                    51: (0, 55),
-                    41: (0, 113),
-                    62: (0, 111),
-                    75: (0, 85),
-                    61: (0, 104),
-                    12: (0, 91),
-                    7: (0, 80),
-                    38: (0, 66),
-                    52: (0, 106),
-                    21: (0, 35),
-                    46: (0, 96),
-                    14: (0, 216),
-                    63: (0, 47),
-                    10: (0, 139),
-                    64: (0, 107),
-                    43: (0, 98),
-                    65: (0, 78),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    66: (0, 60),
-                    13: (0, 154),
-                    67: (0, 49),
-                    29: (0, 202),
-                },
-                101: {0: (1, {"@": 173}), 24: (1, {"@": 173})},
-                102: {
-                    15: (1, {"@": 85}),
-                    17: (1, {"@": 85}),
-                    8: (1, {"@": 85}),
-                    3: (1, {"@": 85}),
-                    13: (1, {"@": 85}),
-                    21: (1, {"@": 85}),
-                    10: (1, {"@": 85}),
-                    35: (1, {"@": 85}),
-                    36: (1, {"@": 85}),
-                    4: (1, {"@": 85}),
-                    16: (1, {"@": 85}),
-                    29: (1, {"@": 85}),
-                    37: (1, {"@": 85}),
-                    38: (1, {"@": 85}),
-                    39: (1, {"@": 85}),
-                    40: (1, {"@": 85}),
-                    34: (1, {"@": 85}),
-                    9: (1, {"@": 85}),
-                    41: (1, {"@": 85}),
-                },
-                103: {
-                    15: (0, 130),
-                    8: (0, 14),
-                    56: (0, 125),
-                    10: (0, 71),
-                    36: (0, 167),
-                    11: (0, 201),
-                    13: (0, 154),
-                    32: (0, 173),
-                },
-                104: {
-                    15: (1, {"@": 79}),
-                    17: (1, {"@": 79}),
-                    8: (1, {"@": 79}),
-                    3: (1, {"@": 79}),
-                    13: (1, {"@": 79}),
-                    21: (1, {"@": 79}),
-                    35: (1, {"@": 79}),
-                    36: (1, {"@": 79}),
-                    4: (1, {"@": 79}),
-                    16: (1, {"@": 79}),
-                    29: (1, {"@": 79}),
-                    41: (1, {"@": 79}),
-                    37: (1, {"@": 79}),
-                    39: (1, {"@": 79}),
-                    38: (1, {"@": 79}),
-                    40: (1, {"@": 79}),
-                    9: (1, {"@": 79}),
-                    10: (1, {"@": 79}),
-                },
-                105: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 186),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                106: {29: (0, 247)},
-                107: {
-                    15: (1, {"@": 80}),
-                    17: (1, {"@": 80}),
-                    8: (1, {"@": 80}),
-                    3: (1, {"@": 80}),
-                    13: (1, {"@": 80}),
-                    21: (1, {"@": 80}),
-                    10: (1, {"@": 80}),
-                    35: (1, {"@": 80}),
-                    36: (1, {"@": 80}),
-                    4: (1, {"@": 80}),
-                    16: (1, {"@": 80}),
-                    29: (1, {"@": 80}),
-                    37: (1, {"@": 80}),
-                    38: (1, {"@": 80}),
-                    39: (1, {"@": 80}),
-                    40: (1, {"@": 80}),
-                    34: (1, {"@": 80}),
-                    9: (1, {"@": 80}),
-                    41: (1, {"@": 80}),
-                },
-                108: {76: (0, 4), 24: (0, 6), 21: (0, 57)},
-                109: {72: (0, 48), 6: (0, 163), 9: (0, 172)},
-                110: {2: (0, 249), 3: (0, 165), 4: (0, 115), 5: (0, 188)},
-                111: {
-                    15: (1, {"@": 87}),
-                    17: (1, {"@": 87}),
-                    8: (1, {"@": 87}),
-                    3: (1, {"@": 87}),
-                    13: (1, {"@": 87}),
-                    21: (1, {"@": 87}),
-                    10: (1, {"@": 87}),
-                    35: (1, {"@": 87}),
-                    36: (1, {"@": 87}),
-                    4: (1, {"@": 87}),
-                    16: (1, {"@": 87}),
-                    29: (1, {"@": 87}),
-                    37: (1, {"@": 87}),
-                    38: (1, {"@": 87}),
-                    39: (1, {"@": 87}),
-                    40: (1, {"@": 87}),
-                    34: (1, {"@": 87}),
-                    9: (1, {"@": 87}),
-                    41: (1, {"@": 87}),
-                },
-                112: {
-                    3: (1, {"@": 131}),
-                    4: (1, {"@": 131}),
-                    40: (1, {"@": 131}),
-                    44: (1, {"@": 131}),
-                    57: (1, {"@": 131}),
-                },
-                113: {29: (0, 238)},
-                114: {
-                    3: (1, {"@": 133}),
-                    4: (1, {"@": 133}),
-                    40: (1, {"@": 133}),
-                    44: (1, {"@": 133}),
-                    57: (1, {"@": 133}),
-                },
-                115: {9: (1, {"@": 44})},
-                116: {
-                    18: (1, {"@": 120}),
-                    15: (1, {"@": 120}),
-                    19: (1, {"@": 120}),
-                    20: (1, {"@": 120}),
-                    21: (1, {"@": 120}),
-                    22: (1, {"@": 120}),
-                    23: (1, {"@": 120}),
-                    24: (1, {"@": 120}),
-                    25: (1, {"@": 120}),
-                    26: (1, {"@": 120}),
-                    27: (1, {"@": 120}),
-                    28: (1, {"@": 120}),
-                    29: (1, {"@": 120}),
-                    30: (1, {"@": 120}),
-                    0: (1, {"@": 120}),
-                    1: (1, {"@": 120}),
-                    31: (1, {"@": 120}),
-                    10: (1, {"@": 120}),
-                },
-                117: {29: (0, 58)},
-                118: {
-                    3: (1, {"@": 134}),
-                    4: (1, {"@": 134}),
-                    40: (1, {"@": 134}),
-                    44: (1, {"@": 134}),
-                    57: (1, {"@": 134}),
-                },
-                119: {36: (0, 204), 67: (0, 190)},
-                120: {57: (1, {"@": 39})},
-                121: {29: (1, {"@": 139}), 24: (1, {"@": 139})},
-                122: {
-                    53: (0, 123),
-                    54: (0, 53),
-                    29: (1, {"@": 62}),
-                    24: (1, {"@": 62}),
-                },
-                123: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    36: (0, 84),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    55: (0, 225),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                    52: (0, 142),
-                },
-                124: {
-                    17: (0, 220),
-                    54: (0, 250),
-                    18: (1, {"@": 125}),
-                    15: (1, {"@": 125}),
-                    19: (1, {"@": 125}),
-                    20: (1, {"@": 125}),
-                    21: (1, {"@": 125}),
-                    22: (1, {"@": 125}),
-                    23: (1, {"@": 125}),
-                    24: (1, {"@": 125}),
-                    25: (1, {"@": 125}),
-                    26: (1, {"@": 125}),
-                    27: (1, {"@": 125}),
-                    28: (1, {"@": 125}),
-                    29: (1, {"@": 125}),
-                    30: (1, {"@": 125}),
-                    0: (1, {"@": 125}),
-                    1: (1, {"@": 125}),
-                    31: (1, {"@": 125}),
-                    10: (1, {"@": 125}),
-                    53: (1, {"@": 125}),
-                },
-                125: {29: (1, {"@": 47}), 24: (1, {"@": 47})},
-                126: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    52: (0, 140),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                127: {
-                    68: (0, 240),
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    77: (0, 41),
-                    78: (0, 160),
-                    69: (0, 135),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    79: (0, 145),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                128: {0: (1, {"@": 174}), 24: (1, {"@": 174})},
-                129: {6: (0, 64), 80: (0, 193), 9: (0, 172)},
-                130: {8: (0, 14), 11: (0, 69), 13: (0, 154)},
-                131: {
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    68: (0, 211),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                132: {
-                    3: (1, {"@": 130}),
-                    4: (1, {"@": 130}),
-                    40: (1, {"@": 130}),
-                    44: (1, {"@": 130}),
-                    57: (1, {"@": 130}),
-                },
-                133: {2: (0, 129), 3: (0, 165), 4: (0, 115)},
-                134: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    52: (0, 241),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                135: {
-                    81: (0, 136),
-                    27: (0, 179),
-                    0: (1, {"@": 104}),
-                    1: (1, {"@": 104}),
-                },
-                136: {27: (0, 45), 0: (1, {"@": 103}), 1: (1, {"@": 103})},
-                137: {67: (0, 77), 36: (0, 204)},
-                138: {
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    68: (0, 213),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                139: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    14: (0, 200),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                140: {0: (0, 5)},
-                141: {29: (1, {"@": 57}), 24: (1, {"@": 57})},
-                142: {29: (1, {"@": 63}), 24: (1, {"@": 63})},
-                143: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    14: (0, 216),
-                    13: (0, 154),
-                    50: (0, 194),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                144: {
-                    18: (1, {"@": 117}),
-                    15: (1, {"@": 117}),
-                    19: (1, {"@": 117}),
-                    20: (1, {"@": 117}),
-                    21: (1, {"@": 117}),
-                    22: (1, {"@": 117}),
-                    23: (1, {"@": 117}),
-                    24: (1, {"@": 117}),
-                    25: (1, {"@": 117}),
-                    26: (1, {"@": 117}),
-                    27: (1, {"@": 117}),
-                    28: (1, {"@": 117}),
-                    29: (1, {"@": 117}),
-                    30: (1, {"@": 117}),
-                    0: (1, {"@": 117}),
-                    1: (1, {"@": 117}),
-                    31: (1, {"@": 117}),
-                    10: (1, {"@": 117}),
-                },
-                145: {0: (0, 171)},
-                146: {29: (1, {"@": 64}), 24: (1, {"@": 64})},
-                147: {53: (0, 27)},
-                148: {29: (1, {"@": 49}), 24: (1, {"@": 49})},
-                149: {29: (0, 155), 24: (0, 198)},
-                150: {21: (1, {"@": 142}), 24: (1, {"@": 142})},
-                151: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    51: (0, 243),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                152: {
-                    18: (0, 219),
-                    30: (0, 230),
-                    25: (0, 242),
-                    15: (1, {"@": 111}),
-                    21: (1, {"@": 111}),
-                    24: (1, {"@": 111}),
-                    10: (1, {"@": 111}),
-                    29: (1, {"@": 111}),
-                    26: (1, {"@": 111}),
-                    27: (1, {"@": 111}),
-                    28: (1, {"@": 111}),
-                    20: (1, {"@": 111}),
-                    22: (1, {"@": 111}),
-                    23: (1, {"@": 111}),
-                    0: (1, {"@": 111}),
-                    31: (1, {"@": 111}),
-                    1: (1, {"@": 111}),
-                    19: (1, {"@": 111}),
-                },
-                153: {
-                    15: (1, {"@": 165}),
-                    19: (1, {"@": 165}),
-                    20: (1, {"@": 165}),
-                    21: (1, {"@": 165}),
-                    22: (1, {"@": 165}),
-                    23: (1, {"@": 165}),
-                    24: (1, {"@": 165}),
-                    26: (1, {"@": 165}),
-                    27: (1, {"@": 165}),
-                    28: (1, {"@": 165}),
-                    29: (1, {"@": 165}),
-                    0: (1, {"@": 165}),
-                    1: (1, {"@": 165}),
-                    31: (1, {"@": 165}),
-                    10: (1, {"@": 165}),
-                },
-                154: {
-                    18: (1, {"@": 127}),
-                    15: (1, {"@": 127}),
-                    19: (1, {"@": 127}),
-                    20: (1, {"@": 127}),
-                    21: (1, {"@": 127}),
-                    22: (1, {"@": 127}),
-                    23: (1, {"@": 127}),
-                    24: (1, {"@": 127}),
-                    25: (1, {"@": 127}),
-                    26: (1, {"@": 127}),
-                    27: (1, {"@": 127}),
-                    28: (1, {"@": 127}),
-                    29: (1, {"@": 127}),
-                    30: (1, {"@": 127}),
-                    0: (1, {"@": 127}),
-                    1: (1, {"@": 127}),
-                    31: (1, {"@": 127}),
-                    10: (1, {"@": 127}),
-                },
-                155: {
-                    3: (1, {"@": 41}),
-                    4: (1, {"@": 41}),
-                    40: (1, {"@": 41}),
-                    44: (1, {"@": 41}),
-                    57: (1, {"@": 41}),
-                    15: (1, {"@": 41}),
-                    17: (1, {"@": 41}),
-                    8: (1, {"@": 41}),
-                    13: (1, {"@": 41}),
-                    21: (1, {"@": 41}),
-                    35: (1, {"@": 41}),
-                    36: (1, {"@": 41}),
-                    16: (1, {"@": 41}),
-                    29: (1, {"@": 41}),
-                    41: (1, {"@": 41}),
-                    37: (1, {"@": 41}),
-                    39: (1, {"@": 41}),
-                    38: (1, {"@": 41}),
-                    9: (1, {"@": 41}),
-                    10: (1, {"@": 41}),
-                },
-                156: {36: (0, 204), 67: (0, 178)},
-                157: {29: (1, {"@": 50}), 24: (1, {"@": 50})},
-                158: {29: (0, 74), 24: (0, 197)},
-                159: {
-                    68: (0, 240),
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    79: (0, 39),
-                    50: (0, 88),
-                    15: (0, 62),
-                    77: (0, 41),
-                    78: (0, 160),
-                    69: (0, 135),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                160: {1: (0, 168), 82: (0, 176), 0: (1, {"@": 102})},
-                161: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    51: (0, 245),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                162: {
-                    18: (1, {"@": 172}),
-                    15: (1, {"@": 172}),
-                    19: (1, {"@": 172}),
-                    20: (1, {"@": 172}),
-                    21: (1, {"@": 172}),
-                    22: (1, {"@": 172}),
-                    23: (1, {"@": 172}),
-                    24: (1, {"@": 172}),
-                    25: (1, {"@": 172}),
-                    26: (1, {"@": 172}),
-                    27: (1, {"@": 172}),
-                    28: (1, {"@": 172}),
-                    29: (1, {"@": 172}),
-                    30: (1, {"@": 172}),
-                    0: (1, {"@": 172}),
-                    1: (1, {"@": 172}),
-                    31: (1, {"@": 172}),
-                    10: (1, {"@": 172}),
-                },
-                163: {
-                    53: (0, 123),
-                    54: (0, 53),
-                    17: (0, 217),
-                    29: (1, {"@": 62}),
-                    24: (1, {"@": 62}),
-                },
-                164: {
-                    18: (1, {"@": 171}),
-                    15: (1, {"@": 171}),
-                    19: (1, {"@": 171}),
-                    20: (1, {"@": 171}),
-                    21: (1, {"@": 171}),
-                    22: (1, {"@": 171}),
-                    23: (1, {"@": 171}),
-                    24: (1, {"@": 171}),
-                    25: (1, {"@": 171}),
-                    26: (1, {"@": 171}),
-                    27: (1, {"@": 171}),
-                    28: (1, {"@": 171}),
-                    29: (1, {"@": 171}),
-                    30: (1, {"@": 171}),
-                    0: (1, {"@": 171}),
-                    1: (1, {"@": 171}),
-                    31: (1, {"@": 171}),
-                    10: (1, {"@": 171}),
-                },
-                165: {9: (1, {"@": 43})},
-                166: {
-                    18: (1, {"@": 114}),
-                    15: (1, {"@": 114}),
-                    19: (1, {"@": 114}),
-                    20: (1, {"@": 114}),
-                    21: (1, {"@": 114}),
-                    22: (1, {"@": 114}),
-                    23: (1, {"@": 114}),
-                    24: (1, {"@": 114}),
-                    25: (1, {"@": 114}),
-                    26: (1, {"@": 114}),
-                    27: (1, {"@": 114}),
-                    28: (1, {"@": 114}),
-                    29: (1, {"@": 114}),
-                    30: (1, {"@": 114}),
-                    0: (1, {"@": 114}),
-                    1: (1, {"@": 114}),
-                    31: (1, {"@": 114}),
-                    10: (1, {"@": 114}),
-                },
-                167: {
-                    15: (0, 130),
-                    8: (0, 14),
-                    32: (0, 108),
-                    10: (0, 71),
-                    21: (0, 148),
-                    11: (0, 201),
-                    13: (0, 154),
-                },
-                168: {
-                    68: (0, 240),
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    69: (0, 135),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    78: (0, 0),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                169: {6: (0, 122), 9: (0, 172), 72: (0, 121)},
-                170: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    51: (0, 248),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                171: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    58: (0, 102),
-                    35: (0, 83),
-                    11: (0, 94),
-                    50: (0, 88),
-                    37: (0, 87),
-                    59: (0, 72),
-                    36: (0, 204),
-                    60: (0, 89),
-                    15: (0, 62),
-                    61: (0, 40),
-                    39: (0, 73),
-                    51: (0, 55),
-                    41: (0, 113),
-                    62: (0, 111),
-                    12: (0, 91),
-                    7: (0, 80),
-                    38: (0, 66),
-                    52: (0, 106),
-                    14: (0, 216),
-                    63: (0, 47),
-                    10: (0, 139),
-                    64: (0, 107),
-                    65: (0, 78),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    66: (0, 60),
-                    13: (0, 154),
-                    67: (0, 49),
-                    29: (0, 202),
-                },
-                172: {
-                    17: (1, {"@": 128}),
-                    18: (1, {"@": 128}),
-                    15: (1, {"@": 128}),
-                    19: (1, {"@": 128}),
-                    20: (1, {"@": 128}),
-                    21: (1, {"@": 128}),
-                    22: (1, {"@": 128}),
-                    23: (1, {"@": 128}),
-                    24: (1, {"@": 128}),
-                    25: (1, {"@": 128}),
-                    54: (1, {"@": 128}),
-                    26: (1, {"@": 128}),
-                    27: (1, {"@": 128}),
-                    28: (1, {"@": 128}),
-                    29: (1, {"@": 128}),
-                    30: (1, {"@": 128}),
-                    0: (1, {"@": 128}),
-                    1: (1, {"@": 128}),
-                    31: (1, {"@": 128}),
-                    10: (1, {"@": 128}),
-                    53: (1, {"@": 128}),
-                },
-                173: {29: (1, {"@": 48}), 24: (1, {"@": 48})},
-                174: {21: (1, {"@": 138}), 24: (1, {"@": 138})},
-                175: {17: (0, 1)},
-                176: {1: (0, 223), 0: (1, {"@": 101})},
-                177: {
-                    15: (1, {"@": 89}),
-                    17: (1, {"@": 89}),
-                    8: (1, {"@": 89}),
-                    3: (1, {"@": 89}),
-                    13: (1, {"@": 89}),
-                    21: (1, {"@": 89}),
-                    10: (1, {"@": 89}),
-                    35: (1, {"@": 89}),
-                    36: (1, {"@": 89}),
-                    4: (1, {"@": 89}),
-                    16: (1, {"@": 89}),
-                    29: (1, {"@": 89}),
-                    37: (1, {"@": 89}),
-                    38: (1, {"@": 89}),
-                    39: (1, {"@": 89}),
-                    40: (1, {"@": 89}),
-                    34: (1, {"@": 89}),
-                    9: (1, {"@": 89}),
-                    41: (1, {"@": 89}),
-                },
-                178: {
-                    3: (1, {"@": 70}),
-                    4: (1, {"@": 70}),
-                    40: (1, {"@": 70}),
-                    44: (1, {"@": 70}),
-                    57: (1, {"@": 70}),
-                },
-                179: {
-                    68: (0, 240),
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    69: (0, 28),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                180: {29: (1, {"@": 45}), 24: (1, {"@": 45})},
-                181: {53: (0, 29), 29: (1, {"@": 58}), 24: (1, {"@": 58})},
-                182: {24: (0, 37), 83: (0, 81), 0: (0, 119)},
-                183: {
-                    10: (0, 196),
-                    15: (0, 203),
-                    21: (1, {"@": 109}),
-                    24: (1, {"@": 109}),
-                    29: (1, {"@": 109}),
-                    26: (1, {"@": 109}),
-                    27: (1, {"@": 109}),
-                    28: (1, {"@": 109}),
-                    20: (1, {"@": 109}),
-                    22: (1, {"@": 109}),
-                    23: (1, {"@": 109}),
-                    0: (1, {"@": 109}),
-                    31: (1, {"@": 109}),
-                    1: (1, {"@": 109}),
-                    19: (1, {"@": 109}),
-                },
-                184: {0: (0, 116), 24: (0, 79)},
-                185: {53: (0, 32)},
-                186: {
-                    26: (1, {"@": 157}),
-                    27: (1, {"@": 157}),
-                    28: (1, {"@": 157}),
-                    20: (1, {"@": 157}),
-                    22: (1, {"@": 157}),
-                    23: (1, {"@": 157}),
-                    0: (1, {"@": 157}),
-                    31: (1, {"@": 157}),
-                    1: (1, {"@": 157}),
-                },
-                187: {19: (0, 17)},
-                188: {0: (1, {"@": 144}), 24: (1, {"@": 144})},
-                189: {
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    68: (0, 30),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                190: {
-                    3: (1, {"@": 68}),
-                    4: (1, {"@": 68}),
-                    40: (1, {"@": 68}),
-                    44: (1, {"@": 68}),
-                    57: (1, {"@": 68}),
-                },
-                191: {21: (1, {"@": 53}), 24: (1, {"@": 53}), 29: (1, {"@": 53})},
-                192: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    73: (0, 101),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    52: (0, 68),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                193: {84: (0, 149), 24: (0, 235), 29: (0, 229)},
-                194: {
-                    15: (1, {"@": 163}),
-                    19: (1, {"@": 163}),
-                    20: (1, {"@": 163}),
-                    21: (1, {"@": 163}),
-                    22: (1, {"@": 163}),
-                    23: (1, {"@": 163}),
-                    24: (1, {"@": 163}),
-                    26: (1, {"@": 163}),
-                    27: (1, {"@": 163}),
-                    28: (1, {"@": 163}),
-                    29: (1, {"@": 163}),
-                    0: (1, {"@": 163}),
-                    1: (1, {"@": 163}),
-                    31: (1, {"@": 163}),
-                    10: (1, {"@": 163}),
-                },
-                195: {21: (1, {"@": 141}), 24: (1, {"@": 141})},
-                196: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    50: (0, 232),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    14: (0, 216),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                197: {6: (0, 122), 9: (0, 172), 72: (0, 224)},
-                198: {6: (0, 64), 80: (0, 86), 9: (0, 172)},
-                199: {
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    68: (0, 20),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                200: {
-                    18: (1, {"@": 118}),
-                    15: (1, {"@": 118}),
-                    19: (1, {"@": 118}),
-                    20: (1, {"@": 118}),
-                    21: (1, {"@": 118}),
-                    22: (1, {"@": 118}),
-                    23: (1, {"@": 118}),
-                    24: (1, {"@": 118}),
-                    25: (1, {"@": 118}),
-                    26: (1, {"@": 118}),
-                    27: (1, {"@": 118}),
-                    28: (1, {"@": 118}),
-                    29: (1, {"@": 118}),
-                    30: (1, {"@": 118}),
-                    0: (1, {"@": 118}),
-                    1: (1, {"@": 118}),
-                    31: (1, {"@": 118}),
-                    10: (1, {"@": 118}),
-                },
-                201: {21: (1, {"@": 54}), 24: (1, {"@": 54}), 29: (1, {"@": 54})},
-                202: {
-                    15: (1, {"@": 90}),
-                    17: (1, {"@": 90}),
-                    8: (1, {"@": 90}),
-                    3: (1, {"@": 90}),
-                    13: (1, {"@": 90}),
-                    21: (1, {"@": 90}),
-                    10: (1, {"@": 90}),
-                    35: (1, {"@": 90}),
-                    36: (1, {"@": 90}),
-                    4: (1, {"@": 90}),
-                    16: (1, {"@": 90}),
-                    29: (1, {"@": 90}),
-                    37: (1, {"@": 90}),
-                    38: (1, {"@": 90}),
-                    39: (1, {"@": 90}),
-                    40: (1, {"@": 90}),
-                    34: (1, {"@": 90}),
-                    9: (1, {"@": 90}),
-                    41: (1, {"@": 90}),
-                },
-                203: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    50: (0, 153),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    14: (0, 216),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                204: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    58: (0, 102),
-                    35: (0, 83),
-                    3: (0, 165),
-                    4: (0, 115),
-                    2: (0, 56),
-                    11: (0, 94),
-                    40: (0, 133),
-                    50: (0, 88),
-                    37: (0, 87),
-                    59: (0, 72),
-                    36: (0, 204),
-                    60: (0, 89),
-                    15: (0, 62),
-                    39: (0, 73),
-                    75: (0, 246),
-                    51: (0, 55),
-                    41: (0, 113),
-                    62: (0, 111),
-                    61: (0, 104),
-                    12: (0, 91),
-                    7: (0, 80),
-                    38: (0, 66),
-                    52: (0, 106),
-                    21: (0, 92),
-                    46: (0, 96),
-                    14: (0, 216),
-                    63: (0, 47),
-                    10: (0, 139),
-                    64: (0, 107),
-                    43: (0, 98),
-                    65: (0, 78),
-                    16: (0, 95),
-                    85: (0, 100),
-                    17: (0, 126),
-                    9: (0, 172),
-                    66: (0, 60),
-                    13: (0, 154),
-                    67: (0, 49),
-                    29: (0, 202),
-                },
-                205: {0: (0, 137), 24: (0, 37), 83: (0, 26)},
-                206: {
-                    3: (1, {"@": 72}),
-                    4: (1, {"@": 72}),
-                    40: (1, {"@": 72}),
-                    44: (1, {"@": 72}),
-                    57: (1, {"@": 72}),
-                },
-                207: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    51: (0, 21),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                208: {
-                    3: (1, {"@": 132}),
-                    4: (1, {"@": 132}),
-                    40: (1, {"@": 132}),
-                    44: (1, {"@": 132}),
-                    57: (1, {"@": 132}),
-                },
-                209: {0: (1, {"@": 143}), 24: (1, {"@": 143})},
-                210: {19: (0, 147)},
-                211: {
-                    0: (1, {"@": 151}),
-                    1: (1, {"@": 151}),
-                    26: (1, {"@": 151}),
-                    20: (1, {"@": 151}),
-                    27: (1, {"@": 151}),
-                },
-                212: {
-                    3: (1, {"@": 67}),
-                    4: (1, {"@": 67}),
-                    40: (1, {"@": 67}),
-                    44: (1, {"@": 67}),
-                    57: (1, {"@": 67}),
-                },
-                213: {
-                    0: (1, {"@": 152}),
-                    1: (1, {"@": 152}),
-                    26: (1, {"@": 152}),
-                    20: (1, {"@": 152}),
-                    27: (1, {"@": 152}),
-                },
-                214: {
-                    43: (0, 208),
-                    2: (0, 109),
-                    44: (0, 52),
-                    46: (0, 114),
-                    47: (0, 118),
-                    3: (0, 165),
-                    4: (0, 115),
-                    40: (0, 133),
-                    57: (1, {"@": 40}),
-                },
-                215: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    51: (0, 25),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                216: {
-                    18: (0, 31),
-                    86: (0, 152),
-                    30: (0, 2),
-                    25: (0, 63),
-                    15: (1, {"@": 112}),
-                    21: (1, {"@": 112}),
-                    24: (1, {"@": 112}),
-                    10: (1, {"@": 112}),
-                    29: (1, {"@": 112}),
-                    26: (1, {"@": 112}),
-                    27: (1, {"@": 112}),
-                    28: (1, {"@": 112}),
-                    20: (1, {"@": 112}),
-                    22: (1, {"@": 112}),
-                    23: (1, {"@": 112}),
-                    0: (1, {"@": 112}),
-                    31: (1, {"@": 112}),
-                    1: (1, {"@": 112}),
-                    19: (1, {"@": 112}),
-                },
-                217: {0: (0, 226), 5: (0, 182), 2: (0, 249), 3: (0, 165), 4: (0, 115)},
-                218: {36: (0, 204), 67: (0, 206)},
-                219: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    14: (0, 231),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                220: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    0: (0, 3),
-                    73: (0, 7),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    52: (0, 68),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                221: {
-                    18: (1, {"@": 167}),
-                    15: (1, {"@": 167}),
-                    19: (1, {"@": 167}),
-                    20: (1, {"@": 167}),
-                    21: (1, {"@": 167}),
-                    22: (1, {"@": 167}),
-                    23: (1, {"@": 167}),
-                    24: (1, {"@": 167}),
-                    25: (1, {"@": 167}),
-                    26: (1, {"@": 167}),
-                    27: (1, {"@": 167}),
-                    28: (1, {"@": 167}),
-                    29: (1, {"@": 167}),
-                    30: (1, {"@": 167}),
-                    0: (1, {"@": 167}),
-                    1: (1, {"@": 167}),
-                    31: (1, {"@": 167}),
-                    10: (1, {"@": 167}),
-                },
-                222: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    51: (0, 42),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                223: {
-                    68: (0, 240),
-                    8: (0, 14),
-                    51: (0, 50),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    78: (0, 61),
-                    69: (0, 135),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                224: {29: (1, {"@": 140}), 24: (1, {"@": 140})},
-                225: {29: (1, {"@": 61}), 24: (1, {"@": 61})},
-                226: {36: (0, 204), 67: (0, 236)},
-                227: {
-                    15: (1, {"@": 164}),
-                    19: (1, {"@": 164}),
-                    20: (1, {"@": 164}),
-                    21: (1, {"@": 164}),
-                    22: (1, {"@": 164}),
-                    23: (1, {"@": 164}),
-                    24: (1, {"@": 164}),
-                    26: (1, {"@": 164}),
-                    27: (1, {"@": 164}),
-                    28: (1, {"@": 164}),
-                    29: (1, {"@": 164}),
-                    0: (1, {"@": 164}),
-                    1: (1, {"@": 164}),
-                    31: (1, {"@": 164}),
-                    10: (1, {"@": 164}),
-                },
-                228: {
-                    3: (1, {"@": 129}),
-                    4: (1, {"@": 129}),
-                    40: (1, {"@": 129}),
-                    44: (1, {"@": 129}),
-                    57: (1, {"@": 129}),
-                },
-                229: {
-                    3: (1, {"@": 42}),
-                    4: (1, {"@": 42}),
-                    40: (1, {"@": 42}),
-                    44: (1, {"@": 42}),
-                    57: (1, {"@": 42}),
-                    15: (1, {"@": 42}),
-                    17: (1, {"@": 42}),
-                    8: (1, {"@": 42}),
-                    13: (1, {"@": 42}),
-                    21: (1, {"@": 42}),
-                    35: (1, {"@": 42}),
-                    36: (1, {"@": 42}),
-                    16: (1, {"@": 42}),
-                    29: (1, {"@": 42}),
-                    41: (1, {"@": 42}),
-                    37: (1, {"@": 42}),
-                    39: (1, {"@": 42}),
-                    38: (1, {"@": 42}),
-                    9: (1, {"@": 42}),
-                    10: (1, {"@": 42}),
-                },
-                230: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    14: (0, 164),
-                    12: (0, 166),
-                    13: (0, 154),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                231: {
-                    18: (1, {"@": 170}),
-                    15: (1, {"@": 170}),
-                    19: (1, {"@": 170}),
-                    20: (1, {"@": 170}),
-                    21: (1, {"@": 170}),
-                    22: (1, {"@": 170}),
-                    23: (1, {"@": 170}),
-                    24: (1, {"@": 170}),
-                    25: (1, {"@": 170}),
-                    26: (1, {"@": 170}),
-                    27: (1, {"@": 170}),
-                    28: (1, {"@": 170}),
-                    29: (1, {"@": 170}),
-                    30: (1, {"@": 170}),
-                    0: (1, {"@": 170}),
-                    1: (1, {"@": 170}),
-                    31: (1, {"@": 170}),
-                    10: (1, {"@": 170}),
-                },
-                232: {
-                    15: (1, {"@": 166}),
-                    19: (1, {"@": 166}),
-                    20: (1, {"@": 166}),
-                    21: (1, {"@": 166}),
-                    22: (1, {"@": 166}),
-                    23: (1, {"@": 166}),
-                    24: (1, {"@": 166}),
-                    26: (1, {"@": 166}),
-                    27: (1, {"@": 166}),
-                    28: (1, {"@": 166}),
-                    29: (1, {"@": 166}),
-                    0: (1, {"@": 166}),
-                    1: (1, {"@": 166}),
-                    31: (1, {"@": 166}),
-                    10: (1, {"@": 166}),
-                },
-                233: {
-                    20: (0, 189),
-                    26: (0, 199),
-                    0: (1, {"@": 105}),
-                    1: (1, {"@": 105}),
-                    27: (1, {"@": 105}),
-                },
-                234: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                    51: (0, 43),
-                },
-                235: {6: (0, 64), 9: (0, 172), 80: (0, 239)},
-                236: {
-                    3: (1, {"@": 69}),
-                    4: (1, {"@": 69}),
-                    40: (1, {"@": 69}),
-                    44: (1, {"@": 69}),
-                    57: (1, {"@": 69}),
-                },
-                237: {19: (0, 13)},
-                238: {
-                    15: (1, {"@": 96}),
-                    17: (1, {"@": 96}),
-                    8: (1, {"@": 96}),
-                    3: (1, {"@": 96}),
-                    13: (1, {"@": 96}),
-                    21: (1, {"@": 96}),
-                    10: (1, {"@": 96}),
-                    35: (1, {"@": 96}),
-                    36: (1, {"@": 96}),
-                    4: (1, {"@": 96}),
-                    16: (1, {"@": 96}),
-                    29: (1, {"@": 96}),
-                    37: (1, {"@": 96}),
-                    38: (1, {"@": 96}),
-                    39: (1, {"@": 96}),
-                    40: (1, {"@": 96}),
-                    34: (1, {"@": 96}),
-                    9: (1, {"@": 96}),
-                    41: (1, {"@": 96}),
-                },
-                239: {29: (1, {"@": 135}), 24: (1, {"@": 135})},
-                240: {
-                    87: (0, 233),
-                    20: (0, 131),
-                    26: (0, 138),
-                    0: (1, {"@": 106}),
-                    1: (1, {"@": 106}),
-                    27: (1, {"@": 106}),
-                },
-                241: {29: (0, 177)},
-                242: {
-                    6: (0, 124),
-                    7: (0, 80),
-                    8: (0, 14),
-                    9: (0, 172),
-                    10: (0, 139),
-                    11: (0, 94),
-                    12: (0, 166),
-                    13: (0, 154),
-                    14: (0, 162),
-                    15: (0, 62),
-                    16: (0, 95),
-                    17: (0, 126),
-                },
-                243: {
-                    26: (1, {"@": 155}),
-                    27: (1, {"@": 155}),
-                    28: (1, {"@": 155}),
-                    20: (1, {"@": 155}),
-                    22: (1, {"@": 155}),
-                    23: (1, {"@": 155}),
-                    0: (1, {"@": 155}),
-                    31: (1, {"@": 155}),
-                    1: (1, {"@": 155}),
-                },
-                244: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    52: (0, 150),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-                245: {
-                    26: (1, {"@": 158}),
-                    27: (1, {"@": 158}),
-                    28: (1, {"@": 158}),
-                    20: (1, {"@": 158}),
-                    22: (1, {"@": 158}),
-                    23: (1, {"@": 158}),
-                    0: (1, {"@": 158}),
-                    31: (1, {"@": 158}),
-                    1: (1, {"@": 158}),
-                },
-                246: {
-                    15: (1, {"@": 145}),
-                    17: (1, {"@": 145}),
-                    35: (1, {"@": 145}),
-                    8: (1, {"@": 145}),
-                    36: (1, {"@": 145}),
-                    3: (1, {"@": 145}),
-                    4: (1, {"@": 145}),
-                    13: (1, {"@": 145}),
-                    16: (1, {"@": 145}),
-                    29: (1, {"@": 145}),
-                    21: (1, {"@": 145}),
-                    37: (1, {"@": 145}),
-                    39: (1, {"@": 145}),
-                    38: (1, {"@": 145}),
-                    40: (1, {"@": 145}),
-                    10: (1, {"@": 145}),
-                    9: (1, {"@": 145}),
-                    41: (1, {"@": 145}),
-                },
-                247: {
-                    15: (1, {"@": 91}),
-                    17: (1, {"@": 91}),
-                    8: (1, {"@": 91}),
-                    3: (1, {"@": 91}),
-                    13: (1, {"@": 91}),
-                    21: (1, {"@": 91}),
-                    10: (1, {"@": 91}),
-                    35: (1, {"@": 91}),
-                    36: (1, {"@": 91}),
-                    4: (1, {"@": 91}),
-                    16: (1, {"@": 91}),
-                    29: (1, {"@": 91}),
-                    37: (1, {"@": 91}),
-                    38: (1, {"@": 91}),
-                    39: (1, {"@": 91}),
-                    40: (1, {"@": 91}),
-                    34: (1, {"@": 91}),
-                    9: (1, {"@": 91}),
-                    41: (1, {"@": 91}),
-                },
-                248: {
-                    26: (1, {"@": 156}),
-                    27: (1, {"@": 156}),
-                    28: (1, {"@": 156}),
-                    20: (1, {"@": 156}),
-                    22: (1, {"@": 156}),
-                    23: (1, {"@": 156}),
-                    0: (1, {"@": 156}),
-                    31: (1, {"@": 156}),
-                    1: (1, {"@": 156}),
-                },
-                249: {6: (0, 18), 9: (0, 172)},
-                250: {
-                    8: (0, 14),
-                    6: (0, 124),
-                    52: (0, 237),
-                    11: (0, 94),
-                    50: (0, 88),
-                    15: (0, 62),
-                    51: (0, 55),
-                    7: (0, 80),
-                    10: (0, 139),
-                    14: (0, 216),
-                    16: (0, 95),
-                    17: (0, 126),
-                    9: (0, 172),
-                    12: (0, 166),
-                    13: (0, 154),
-                },
-            },
-            "start_states": {"start": 10},
-            "end_states": {"start": 59},
-        },
-        "__type__": "ParsingFrontend",
-    },
-    "rules": [
-        {"@": 39},
-        {"@": 40},
-        {"@": 41},
-        {"@": 42},
-        {"@": 43},
-        {"@": 44},
-        {"@": 45},
-        {"@": 46},
-        {"@": 47},
-        {"@": 48},
-        {"@": 49},
-        {"@": 50},
-        {"@": 51},
-        {"@": 52},
-        {"@": 53},
-        {"@": 54},
-        {"@": 55},
-        {"@": 56},
-        {"@": 57},
-        {"@": 58},
-        {"@": 59},
-        {"@": 60},
-        {"@": 61},
-        {"@": 62},
-        {"@": 63},
-        {"@": 64},
-        {"@": 65},
-        {"@": 66},
-        {"@": 67},
-        {"@": 68},
-        {"@": 69},
-        {"@": 70},
-        {"@": 71},
-        {"@": 72},
-        {"@": 73},
-        {"@": 74},
-        {"@": 75},
-        {"@": 76},
-        {"@": 77},
-        {"@": 78},
-        {"@": 79},
-        {"@": 80},
-        {"@": 81},
-        {"@": 82},
-        {"@": 83},
-        {"@": 84},
-        {"@": 85},
-        {"@": 86},
-        {"@": 87},
-        {"@": 88},
-        {"@": 89},
-        {"@": 90},
-        {"@": 91},
-        {"@": 92},
-        {"@": 93},
-        {"@": 94},
-        {"@": 95},
-        {"@": 96},
-        {"@": 97},
-        {"@": 98},
-        {"@": 99},
-        {"@": 100},
-        {"@": 101},
-        {"@": 102},
-        {"@": 103},
-        {"@": 104},
-        {"@": 105},
-        {"@": 106},
-        {"@": 107},
-        {"@": 108},
-        {"@": 109},
-        {"@": 110},
-        {"@": 111},
-        {"@": 112},
-        {"@": 113},
-        {"@": 114},
-        {"@": 115},
-        {"@": 116},
-        {"@": 117},
-        {"@": 118},
-        {"@": 119},
-        {"@": 120},
-        {"@": 121},
-        {"@": 122},
-        {"@": 123},
-        {"@": 124},
-        {"@": 125},
-        {"@": 126},
-        {"@": 127},
-        {"@": 128},
-        {"@": 129},
-        {"@": 130},
-        {"@": 131},
-        {"@": 132},
-        {"@": 133},
-        {"@": 134},
-        {"@": 135},
-        {"@": 136},
-        {"@": 137},
-        {"@": 138},
-        {"@": 139},
-        {"@": 140},
-        {"@": 141},
-        {"@": 142},
-        {"@": 143},
-        {"@": 144},
-        {"@": 145},
-        {"@": 146},
-        {"@": 147},
-        {"@": 148},
-        {"@": 149},
-        {"@": 150},
-        {"@": 151},
-        {"@": 152},
-        {"@": 153},
-        {"@": 154},
-        {"@": 155},
-        {"@": 156},
-        {"@": 157},
-        {"@": 158},
-        {"@": 159},
-        {"@": 160},
-        {"@": 161},
-        {"@": 162},
-        {"@": 163},
-        {"@": 164},
-        {"@": 165},
-        {"@": 166},
-        {"@": 167},
-        {"@": 168},
-        {"@": 169},
-        {"@": 170},
-        {"@": 171},
-        {"@": 172},
-        {"@": 173},
-        {"@": 174},
-    ],
-    "options": {
-        "debug": False,
-        "strict": False,
-        "keep_all_tokens": False,
-        "tree_class": None,
-        "cache": False,
-        "postlex": None,
-        "parser": "lalr",
-        "lexer": "contextual",
-        "transformer": None,
-        "start": ["start"],
-        "priority": "normal",
-        "ambiguity": "auto",
-        "regex": False,
-        "propagate_positions": False,
-        "lexer_callbacks": {},
-        "maybe_placeholders": False,
-        "edit_terminals": None,
-        "g_regex_flags": 0,
-        "use_bytes": False,
-        "ordered_sets": True,
-        "import_paths": [],
-        "source_path": None,
-        "_plugins": {},
-    },
-    "__type__": "Lark",
-}
-MEMO = {
-    0: {
-        "name": "PLUS",
-        "pattern": {"value": "+", "flags": [], "raw": '"+"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    1: {
-        "name": "MINUS",
-        "pattern": {"value": "-", "flags": [], "raw": '"-"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    2: {
-        "name": "MUL",
-        "pattern": {"value": "*", "flags": [], "raw": '"*"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    3: {
-        "name": "DIV",
-        "pattern": {"value": "/", "flags": [], "raw": '"/"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    4: {
-        "name": "MOD",
-        "pattern": {"value": "%", "flags": [], "raw": '"%"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    5: {
-        "name": "LOR",
-        "pattern": {
-            "value": "||",
-            "flags": [],
-            "raw": '"||"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    6: {
-        "name": "LAND",
-        "pattern": {
-            "value": "&&",
-            "flags": [],
-            "raw": '"&&"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    7: {
-        "name": "EQ",
-        "pattern": {
-            "value": "==",
-            "flags": [],
-            "raw": '"=="',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    8: {
-        "name": "NEQ",
-        "pattern": {
-            "value": "!=",
-            "flags": [],
-            "raw": '"!="',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    9: {
-        "name": "LT",
-        "pattern": {"value": "<", "flags": [], "raw": '"<"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    10: {
-        "name": "LTE",
-        "pattern": {
-            "value": "<=",
-            "flags": [],
-            "raw": '"<="',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    11: {
-        "name": "GT",
-        "pattern": {"value": ">", "flags": [], "raw": '">"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    12: {
-        "name": "GTE",
-        "pattern": {
-            "value": ">=",
-            "flags": [],
-            "raw": '">="',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    13: {
-        "name": "NOT",
-        "pattern": {"value": "!", "flags": [], "raw": '"!"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    14: {
-        "name": "LBRACKET",
-        "pattern": {"value": "[", "flags": [], "raw": '"["', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    15: {
-        "name": "RBRACKET",
-        "pattern": {"value": "]", "flags": [], "raw": '"]"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    16: {
-        "name": "INT",
-        "pattern": {
-            "value": "(?:(?:0x|0X)(?:(?:[a-f]|[A-F]|[0-9]))+|[1-9](?:[0-9])*|0(?:[0-7])*)",
-            "flags": [],
-            "raw": None,
-            "_width": [1, 18446744073709551616],
-            "__type__": "PatternRE",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    17: {
-        "name": "FLOAT",
-        "pattern": {
-            "value": "(?:(?:0x|0X)(?:(?:[a-f]|[A-F]|[0-9]))+|[1-9](?:[0-9])*|0(?:[0-7])*)\\.(?:(?:0x|0X)(?:(?:[a-f]|[A-F]|[0-9]))+|[1-9](?:[0-9])*|0(?:[0-7])*)",
-            "flags": [],
-            "raw": None,
-            "_width": [3, 18446744073709551616],
-            "__type__": "PatternRE",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    18: {
-        "name": "NAME",
-        "pattern": {
-            "value": "(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*",
-            "flags": [],
-            "raw": None,
-            "_width": [1, 18446744073709551616],
-            "__type__": "PatternRE",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    19: {
-        "name": "WS",
-        "pattern": {
-            "value": "(?:[ \t\x0c\r\n])+",
-            "flags": [],
-            "raw": None,
-            "_width": [1, 18446744073709551616],
-            "__type__": "PatternRE",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    20: {
-        "name": "C_COMMENT",
-        "pattern": {
-            "value": "/\\*(.|\n)*?\\*/",
-            "flags": [],
-            "raw": None,
-            "_width": [4, 18446744073709551616],
-            "__type__": "PatternRE",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    21: {
-        "name": "CPP_COMMENT",
-        "pattern": {
-            "value": "\\/\\/[^\n]*",
-            "flags": [],
-            "raw": "/\\/\\/[^\\n]*/",
-            "_width": [2, 18446744073709551616],
-            "__type__": "PatternRE",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    22: {
-        "name": "VOID_T",
-        "pattern": {
-            "value": "void",
-            "flags": [],
-            "raw": '"void"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    23: {
-        "name": "INT_T",
-        "pattern": {
-            "value": "int",
-            "flags": [],
-            "raw": '"int"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    24: {
-        "name": "FLOAT_T",
-        "pattern": {
-            "value": "float",
-            "flags": [],
-            "raw": '"float"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    25: {
-        "name": "COMMA",
-        "pattern": {"value": ",", "flags": [], "raw": '","', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    26: {
-        "name": "CONST",
-        "pattern": {
-            "value": "const",
-            "flags": [],
-            "raw": '"const"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    27: {
-        "name": "SEMICOLON",
-        "pattern": {"value": ";", "flags": [], "raw": '";"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    28: {
-        "name": "EQUAL",
-        "pattern": {"value": "=", "flags": [], "raw": '"="', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    29: {
-        "name": "LBRACE",
-        "pattern": {"value": "{", "flags": [], "raw": '"{"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    30: {
-        "name": "RBRACE",
-        "pattern": {"value": "}", "flags": [], "raw": '"}"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    31: {
-        "name": "LPAR",
-        "pattern": {"value": "(", "flags": [], "raw": '"("', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    32: {
-        "name": "RPAR",
-        "pattern": {"value": ")", "flags": [], "raw": '")"', "__type__": "PatternStr"},
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    33: {
-        "name": "ELSE",
-        "pattern": {
-            "value": "else",
-            "flags": [],
-            "raw": '"else"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    34: {
-        "name": "IF",
-        "pattern": {
-            "value": "if",
-            "flags": [],
-            "raw": '"if"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    35: {
-        "name": "WHILE",
-        "pattern": {
-            "value": "while",
-            "flags": [],
-            "raw": '"while"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    36: {
-        "name": "BREAK",
-        "pattern": {
-            "value": "break",
-            "flags": [],
-            "raw": '"break"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    37: {
-        "name": "CONTINUE",
-        "pattern": {
-            "value": "continue",
-            "flags": [],
-            "raw": '"continue"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    38: {
-        "name": "RETURN",
-        "pattern": {
-            "value": "return",
-            "flags": [],
-            "raw": '"return"',
-            "__type__": "PatternStr",
-        },
-        "priority": 0,
-        "__type__": "TerminalDef",
-    },
-    39: {
-        "origin": {"name": Token("RULE", "start"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "comp_unit", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    40: {
-        "origin": {"name": Token("RULE", "comp_unit"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "__comp_unit_plus_0", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    41: {
-        "origin": {"name": Token("RULE", "const_decl"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "CONST", "filter_out": True, "__type__": "Terminal"},
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "const_def", "__type__": "NonTerminal"},
-            {"name": "__const_decl_star_1", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    42: {
-        "origin": {"name": Token("RULE", "const_decl"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "CONST", "filter_out": True, "__type__": "Terminal"},
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "const_def", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    43: {
-        "origin": {"name": Token("RULE", "btype"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "INT_T", "filter_out": False, "__type__": "Terminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    44: {
-        "origin": {"name": Token("RULE", "btype"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "FLOAT_T", "filter_out": False, "__type__": "Terminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    45: {
-        "origin": {"name": Token("RULE", "const_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "INT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "const_init_val", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    46: {
-        "origin": {"name": Token("RULE", "const_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "const_init_val", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    47: {
-        "origin": {"name": Token("RULE", "const_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "const_init_val", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    48: {
-        "origin": {"name": Token("RULE", "const_init_val"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "signed_number", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    49: {
-        "origin": {"name": Token("RULE", "const_init_val"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    50: {
-        "origin": {"name": Token("RULE", "const_init_val"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "signed_number", "__type__": "NonTerminal"},
-            {"name": "__const_init_val_star_2", "__type__": "NonTerminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    51: {
-        "origin": {"name": Token("RULE", "const_init_val"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "signed_number", "__type__": "NonTerminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    52: {
-        "origin": {"name": Token("RULE", "signed_number"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "PLUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "number", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    53: {
-        "origin": {"name": Token("RULE", "signed_number"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "MINUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "number", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    54: {
-        "origin": {"name": Token("RULE", "signed_number"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "number", "__type__": "NonTerminal"}],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    55: {
-        "origin": {"name": Token("RULE", "var_decl"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "var_def", "__type__": "NonTerminal"},
-            {"name": "__var_decl_star_3", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    56: {
-        "origin": {"name": Token("RULE", "var_decl"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "var_def", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    57: {
-        "origin": {"name": Token("RULE", "var_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "INT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "init_val", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    58: {
-        "origin": {"name": Token("RULE", "var_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "INT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    59: {
-        "origin": {"name": Token("RULE", "var_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "init_val", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    60: {
-        "origin": {"name": Token("RULE", "var_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    61: {
-        "origin": {"name": Token("RULE", "var_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "init_val", "__type__": "NonTerminal"},
-        ],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    62: {
-        "origin": {"name": Token("RULE", "var_def"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "ident", "__type__": "NonTerminal"}],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    63: {
-        "origin": {"name": Token("RULE", "init_val"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "exp", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    64: {
-        "origin": {"name": Token("RULE", "init_val"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    65: {
-        "origin": {"name": Token("RULE", "init_val"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "__init_val_star_4", "__type__": "NonTerminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    66: {
-        "origin": {"name": Token("RULE", "init_val"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    67: {
-        "origin": {"name": Token("RULE", "func_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_fparam", "__type__": "NonTerminal"},
-            {"name": "__func_def_star_5", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "block", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    68: {
-        "origin": {"name": Token("RULE", "func_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_fparam", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "block", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    69: {
-        "origin": {"name": Token("RULE", "func_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "block", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    70: {
-        "origin": {"name": Token("RULE", "func_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "VOID_T", "filter_out": False, "__type__": "Terminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_fparam", "__type__": "NonTerminal"},
-            {"name": "__func_def_star_5", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "block", "__type__": "NonTerminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    71: {
-        "origin": {"name": Token("RULE", "func_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "VOID_T", "filter_out": False, "__type__": "Terminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_fparam", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "block", "__type__": "NonTerminal"},
-        ],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    72: {
-        "origin": {"name": Token("RULE", "func_def"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "VOID_T", "filter_out": False, "__type__": "Terminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "block", "__type__": "NonTerminal"},
-        ],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    73: {
-        "origin": {"name": Token("RULE", "func_fparam"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": False, "__type__": "Terminal"},
-            {"name": "RBRACKET", "filter_out": False, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    74: {
-        "origin": {"name": Token("RULE", "func_fparam"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "btype", "__type__": "NonTerminal"},
-            {"name": "ident", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    75: {
-        "origin": {"name": Token("RULE", "block"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "__block_star_6", "__type__": "NonTerminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    76: {
-        "origin": {"name": Token("RULE", "block"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LBRACE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "RBRACE", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    77: {
-        "origin": {"name": Token("RULE", "block_item"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "const_decl", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    78: {
-        "origin": {"name": Token("RULE", "block_item"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "var_decl", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    79: {
-        "origin": {"name": Token("RULE", "block_item"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "stmt", "__type__": "NonTerminal"}],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    80: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "assign_stmt", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    81: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "empty_stmt", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    82: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "exp_stmt", "__type__": "NonTerminal"}],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    83: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "block", "__type__": "NonTerminal"}],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    84: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "if_stmt", "__type__": "NonTerminal"}],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    85: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "while_stmt", "__type__": "NonTerminal"}],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    86: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "break_stmt", "__type__": "NonTerminal"}],
-        "order": 6,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    87: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "continue_stmt", "__type__": "NonTerminal"}],
-        "order": 7,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    88: {
-        "origin": {"name": Token("RULE", "stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "return_stmt", "__type__": "NonTerminal"}],
-        "order": 8,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    89: {
-        "origin": {"name": Token("RULE", "assign_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "lval", "__type__": "NonTerminal"},
-            {"name": "EQUAL", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    90: {
-        "origin": {"name": Token("RULE", "empty_stmt"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    91: {
-        "origin": {"name": Token("RULE", "exp_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    92: {
-        "origin": {"name": Token("RULE", "if_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "IF", "filter_out": True, "__type__": "Terminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "cond", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "stmt", "__type__": "NonTerminal"},
-            {"name": "ELSE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "stmt", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    93: {
-        "origin": {"name": Token("RULE", "if_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "IF", "filter_out": True, "__type__": "Terminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "cond", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "stmt", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    94: {
-        "origin": {"name": Token("RULE", "while_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "WHILE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "cond", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "stmt", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    95: {
-        "origin": {"name": Token("RULE", "break_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "BREAK", "filter_out": True, "__type__": "Terminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    96: {
-        "origin": {"name": Token("RULE", "continue_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "CONTINUE", "filter_out": True, "__type__": "Terminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    97: {
-        "origin": {"name": Token("RULE", "return_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "RETURN", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    98: {
-        "origin": {"name": Token("RULE", "return_stmt"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "RETURN", "filter_out": True, "__type__": "Terminal"},
-            {"name": "SEMICOLON", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    99: {
-        "origin": {"name": Token("RULE", "exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "add_exp", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    100: {
-        "origin": {"name": Token("RULE", "cond"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "lor_exp", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    101: {
-        "origin": {"name": Token("RULE", "lor_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "land_exp", "__type__": "NonTerminal"},
-            {"name": "__lor_exp_star_7", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    102: {
-        "origin": {"name": Token("RULE", "lor_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "land_exp", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    103: {
-        "origin": {"name": Token("RULE", "land_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "eq_exp", "__type__": "NonTerminal"},
-            {"name": "__land_exp_star_8", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    104: {
-        "origin": {"name": Token("RULE", "land_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "eq_exp", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    105: {
-        "origin": {"name": Token("RULE", "eq_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "rel_exp", "__type__": "NonTerminal"},
-            {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    106: {
-        "origin": {"name": Token("RULE", "eq_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "rel_exp", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    107: {
-        "origin": {"name": Token("RULE", "rel_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "add_exp", "__type__": "NonTerminal"},
-            {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    108: {
-        "origin": {"name": Token("RULE", "rel_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "add_exp", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    109: {
-        "origin": {"name": Token("RULE", "add_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "mul_exp", "__type__": "NonTerminal"},
-            {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    110: {
-        "origin": {"name": Token("RULE", "add_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "mul_exp", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    111: {
-        "origin": {"name": Token("RULE", "mul_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-            {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    112: {
-        "origin": {"name": Token("RULE", "mul_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "unary_exp", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    113: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    114: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "lval", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    115: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "number", "__type__": "NonTerminal"}],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    116: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "func_call", "__type__": "NonTerminal"}],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    117: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "PLUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    118: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "MINUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    119: {
-        "origin": {"name": Token("RULE", "unary_exp"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "NOT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 6,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    120: {
-        "origin": {"name": Token("RULE", "func_call"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_rparam", "__type__": "NonTerminal"},
-            {"name": "__func_call_star_13", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    121: {
-        "origin": {"name": Token("RULE", "func_call"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_rparam", "__type__": "NonTerminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    122: {
-        "origin": {"name": Token("RULE", "func_call"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LPAR", "filter_out": True, "__type__": "Terminal"},
-            {"name": "RPAR", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    123: {
-        "origin": {"name": Token("RULE", "func_rparam"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "exp", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    124: {
-        "origin": {"name": Token("RULE", "lval"), "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "ident", "__type__": "NonTerminal"},
-            {"name": "LBRACKET", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-            {"name": "RBRACKET", "filter_out": True, "__type__": "Terminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    125: {
-        "origin": {"name": Token("RULE", "lval"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "ident", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    126: {
-        "origin": {"name": Token("RULE", "number"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "INT", "filter_out": False, "__type__": "Terminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    127: {
-        "origin": {"name": Token("RULE", "number"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "FLOAT", "filter_out": False, "__type__": "Terminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    128: {
-        "origin": {"name": Token("RULE", "ident"), "__type__": "NonTerminal"},
-        "expansion": [{"name": "NAME", "filter_out": False, "__type__": "Terminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    129: {
-        "origin": {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-        "expansion": [{"name": "const_decl", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    130: {
-        "origin": {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-        "expansion": [{"name": "var_decl", "__type__": "NonTerminal"}],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    131: {
-        "origin": {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-        "expansion": [{"name": "func_def", "__type__": "NonTerminal"}],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    132: {
-        "origin": {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-            {"name": "const_decl", "__type__": "NonTerminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    133: {
-        "origin": {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-            {"name": "var_decl", "__type__": "NonTerminal"},
-        ],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    134: {
-        "origin": {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__comp_unit_plus_0", "__type__": "NonTerminal"},
-            {"name": "func_def", "__type__": "NonTerminal"},
-        ],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    135: {
-        "origin": {"name": "__const_decl_star_1", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "const_def", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    136: {
-        "origin": {"name": "__const_decl_star_1", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__const_decl_star_1", "__type__": "NonTerminal"},
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "const_def", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    137: {
-        "origin": {"name": "__const_init_val_star_2", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "signed_number", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    138: {
-        "origin": {"name": "__const_init_val_star_2", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__const_init_val_star_2", "__type__": "NonTerminal"},
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "signed_number", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    139: {
-        "origin": {"name": "__var_decl_star_3", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "var_def", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    140: {
-        "origin": {"name": "__var_decl_star_3", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__var_decl_star_3", "__type__": "NonTerminal"},
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "var_def", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    141: {
-        "origin": {"name": "__init_val_star_4", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    142: {
-        "origin": {"name": "__init_val_star_4", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__init_val_star_4", "__type__": "NonTerminal"},
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    143: {
-        "origin": {"name": "__func_def_star_5", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_fparam", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    144: {
-        "origin": {"name": "__func_def_star_5", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__func_def_star_5", "__type__": "NonTerminal"},
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_fparam", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    145: {
-        "origin": {"name": "__block_star_6", "__type__": "NonTerminal"},
-        "expansion": [{"name": "block_item", "__type__": "NonTerminal"}],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    146: {
-        "origin": {"name": "__block_star_6", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__block_star_6", "__type__": "NonTerminal"},
-            {"name": "block_item", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    147: {
-        "origin": {"name": "__lor_exp_star_7", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LOR", "filter_out": False, "__type__": "Terminal"},
-            {"name": "land_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    148: {
-        "origin": {"name": "__lor_exp_star_7", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__lor_exp_star_7", "__type__": "NonTerminal"},
-            {"name": "LOR", "filter_out": False, "__type__": "Terminal"},
-            {"name": "land_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    149: {
-        "origin": {"name": "__land_exp_star_8", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LAND", "filter_out": False, "__type__": "Terminal"},
-            {"name": "eq_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    150: {
-        "origin": {"name": "__land_exp_star_8", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__land_exp_star_8", "__type__": "NonTerminal"},
-            {"name": "LAND", "filter_out": False, "__type__": "Terminal"},
-            {"name": "eq_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    151: {
-        "origin": {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "EQ", "filter_out": False, "__type__": "Terminal"},
-            {"name": "rel_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    152: {
-        "origin": {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "NEQ", "filter_out": False, "__type__": "Terminal"},
-            {"name": "rel_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    153: {
-        "origin": {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-            {"name": "EQ", "filter_out": False, "__type__": "Terminal"},
-            {"name": "rel_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    154: {
-        "origin": {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__eq_exp_star_9", "__type__": "NonTerminal"},
-            {"name": "NEQ", "filter_out": False, "__type__": "Terminal"},
-            {"name": "rel_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    155: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    156: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "GT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    157: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "LTE", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    158: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "GTE", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    159: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-            {"name": "LT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    160: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-            {"name": "GT", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    161: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-            {"name": "LTE", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 6,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    162: {
-        "origin": {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__rel_exp_star_10", "__type__": "NonTerminal"},
-            {"name": "GTE", "filter_out": False, "__type__": "Terminal"},
-            {"name": "add_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 7,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    163: {
-        "origin": {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "PLUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "mul_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    164: {
-        "origin": {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "MINUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "mul_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    165: {
-        "origin": {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-            {"name": "PLUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "mul_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    166: {
-        "origin": {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__add_exp_star_11", "__type__": "NonTerminal"},
-            {"name": "MINUS", "filter_out": False, "__type__": "Terminal"},
-            {"name": "mul_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    167: {
-        "origin": {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "MUL", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    168: {
-        "origin": {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "DIV", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    169: {
-        "origin": {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "MOD", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 2,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    170: {
-        "origin": {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-            {"name": "MUL", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 3,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    171: {
-        "origin": {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-            {"name": "DIV", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 4,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    172: {
-        "origin": {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__mul_exp_star_12", "__type__": "NonTerminal"},
-            {"name": "MOD", "filter_out": False, "__type__": "Terminal"},
-            {"name": "unary_exp", "__type__": "NonTerminal"},
-        ],
-        "order": 5,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    173: {
-        "origin": {"name": "__func_call_star_13", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_rparam", "__type__": "NonTerminal"},
-        ],
-        "order": 0,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-    174: {
-        "origin": {"name": "__func_call_star_13", "__type__": "NonTerminal"},
-        "expansion": [
-            {"name": "__func_call_star_13", "__type__": "NonTerminal"},
-            {"name": "COMMA", "filter_out": True, "__type__": "Terminal"},
-            {"name": "func_rparam", "__type__": "NonTerminal"},
-        ],
-        "order": 1,
-        "alias": None,
-        "options": {
-            "keep_all_tokens": False,
-            "expand1": False,
-            "priority": None,
-            "template_source": None,
-            "empty_indices": (),
-            "__type__": "RuleOptions",
-        },
-        "__type__": "Rule",
-    },
-}
+DATA = (
+{'parser': {'lexer_conf': {'terminals': [{'@': 0}, {'@': 1}, {'@': 2}, {'@': 3}, {'@': 4}, {'@': 5}, {'@': 6}, {'@': 7}, {'@': 8}, {'@': 9}, {'@': 10}, {'@': 11}, {'@': 12}, {'@': 13}, {'@': 14}, {'@': 15}, {'@': 16}, {'@': 17}, {'@': 18}, {'@': 19}, {'@': 20}, {'@': 21}, {'@': 22}, {'@': 23}, {'@': 24}, {'@': 25}, {'@': 26}, {'@': 27}, {'@': 28}, {'@': 29}, {'@': 30}, {'@': 31}, {'@': 32}, {'@': 33}, {'@': 34}, {'@': 35}, {'@': 36}, {'@': 37}, {'@': 38}], 'ignore': ['WS', 'C_COMMENT', 'CPP_COMMENT'], 'g_regex_flags': 0, 'use_bytes': False, 'lexer_type': 'contextual', '__type__': 'LexerConf'}, 'parser_conf': {'rules': [{'@': 39}, {'@': 40}, {'@': 41}, {'@': 42}, {'@': 43}, {'@': 44}, {'@': 45}, {'@': 46}, {'@': 47}, {'@': 48}, {'@': 49}, {'@': 50}, {'@': 51}, {'@': 52}, {'@': 53}, {'@': 54}, {'@': 55}, {'@': 56}, {'@': 57}, {'@': 58}, {'@': 59}, {'@': 60}, {'@': 61}, {'@': 62}, {'@': 63}, {'@': 64}, {'@': 65}, {'@': 66}, {'@': 67}, {'@': 68}, {'@': 69}, {'@': 70}, {'@': 71}, {'@': 72}, {'@': 73}, {'@': 74}, {'@': 75}, {'@': 76}, {'@': 77}, {'@': 78}, {'@': 79}, {'@': 80}, {'@': 81}, {'@': 82}, {'@': 83}, {'@': 84}, {'@': 85}, {'@': 86}, {'@': 87}, {'@': 88}, {'@': 89}, {'@': 90}, {'@': 91}, {'@': 92}, {'@': 93}, {'@': 94}, {'@': 95}, {'@': 96}, {'@': 97}, {'@': 98}, {'@': 99}, {'@': 100}, {'@': 101}, {'@': 102}, {'@': 103}, {'@': 104}, {'@': 105}, {'@': 106}, {'@': 107}, {'@': 108}, {'@': 109}, {'@': 110}, {'@': 111}, {'@': 112}, {'@': 113}, {'@': 114}, {'@': 115}, {'@': 116}, {'@': 117}, {'@': 118}, {'@': 119}, {'@': 120}, {'@': 121}, {'@': 122}, {'@': 123}, {'@': 124}, {'@': 125}, {'@': 126}, {'@': 127}, {'@': 128}, {'@': 129}, {'@': 130}, {'@': 131}, {'@': 132}, {'@': 133}, {'@': 134}, {'@': 135}, {'@': 136}, {'@': 137}, {'@': 138}, {'@': 139}, {'@': 140}, {'@': 141}, {'@': 142}, {'@': 143}, {'@': 144}, {'@': 145}, {'@': 146}, {'@': 147}, {'@': 148}, {'@': 149}, {'@': 150}, {'@': 151}, {'@': 152}, {'@': 153}, {'@': 154}, {'@': 155}, {'@': 156}, {'@': 157}, {'@': 158}, {'@': 159}, {'@': 160}, {'@': 161}, {'@': 162}, {'@': 163}, {'@': 164}, {'@': 165}, {'@': 166}, {'@': 167}, {'@': 168}, {'@': 169}, {'@': 170}, {'@': 171}], 'start': ['start'], 'parser_type': 'lalr', '__type__': 'ParserConf'}, 'parser': {'tokens': {0: 'LPAR', 1: 'COMMA', 2: 'SEMICOLON', 3: 'MINUS', 4: '__add_exp_star_11', 5: 'PLUS', 6: 'NEQ', 7: 'RPAR', 8: 'LT', 9: 'LOR', 10: 'GT', 11: 'GTE', 12: 'LAND', 13: 'LTE', 14: 'EQ', 15: 'RBRACE', 16: 'RBRACKET', 17: 'INT', 18: 'unary_exp', 19: 'FLOAT', 20: 'func_call', 21: 'NAME', 22: 'NOT', 23: 'lval', 24: 'ident', 25: 'number', 26: '__func_def_star_5', 27: '__eq_exp_star_9', 28: 'LBRACE', 29: 'CONTINUE', 30: 'FLOAT_T', 31: 'CONST', 32: 'RETURN', 33: 'IF', 34: 'BREAK', 35: 'WHILE', 36: 'INT_T', 37: '__init_val_star_4', 38: 'MOD', 39: 'MUL', 40: 'DIV', 41: 'signed_number', 42: 'const_init_val', 43: 'EQUAL', 44: 'mul_exp', 45: 'add_exp', 46: 'btype', 47: 'func_fparam', 48: 'ELSE', 49: 'if_stmt', 50: 'block', 51: 'var_decl', 52: 'continue_stmt', 53: 'exp', 54: 'const_decl', 55: 'exp_stmt', 56: 'while_stmt', 57: 'stmt', 58: 'empty_stmt', 59: 'return_stmt', 60: 'assign_stmt', 61: 'break_stmt', 62: 'block_item', 63: 'const_def', 64: 'rel_exp', 65: 'cond', 66: 'land_exp', 67: 'eq_exp', 68: 'lor_exp', 69: 'var_def', 70: '__const_init_val_star_2', 71: '$END', 72: 'VOID_T', 73: '__lor_exp_star_7', 74: '__const_decl_star_1', 75: '__block_star_6', 76: '__land_exp_star_8', 77: 'start', 78: '__comp_unit_plus_0', 79: 'comp_unit', 80: 'func_def', 81: 'LBRACKET', 82: 'init_val', 83: '__var_decl_star_3', 84: '__rel_exp_star_10', 85: '__mul_exp_star_12'}, 'states': {0: {0: (0, 47)}, 1: {1: (0, 88), 2: (0, 133)}, 2: {3: (0, 90), 4: (0, 85), 5: (0, 108), 6: (1, {'@': 110}), 7: (1, {'@': 110}), 8: (1, {'@': 110}), 9: (1, {'@': 110}), 10: (1, {'@': 110}), 11: (1, {'@': 110}), 12: (1, {'@': 110}), 13: (1, {'@': 110}), 14: (1, {'@': 110}), 2: (1, {'@': 110}), 15: (1, {'@': 110}), 1: (1, {'@': 110}), 16: (1, {'@': 110})}, 3: {7: (1, {'@': 142}), 1: (1, {'@': 142})}, 4: {17: (0, 227), 18: (0, 196), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 25: (0, 182)}, 5: {7: (0, 162), 26: (0, 223), 1: (0, 242)}, 6: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 239), 25: (0, 182)}, 7: {2: (1, {'@': 64}), 1: (1, {'@': 64})}, 8: {27: (0, 218), 6: (0, 65), 14: (0, 38), 9: (1, {'@': 106}), 7: (1, {'@': 106}), 12: (1, {'@': 106})}, 9: {3: (1, {'@': 144}), 22: (1, {'@': 144}), 5: (1, {'@': 144}), 28: (1, {'@': 144}), 29: (1, {'@': 144}), 30: (1, {'@': 144}), 31: (1, {'@': 144}), 2: (1, {'@': 144}), 32: (1, {'@': 144}), 33: (1, {'@': 144}), 15: (1, {'@': 144}), 21: (1, {'@': 144}), 34: (1, {'@': 144}), 35: (1, {'@': 144}), 36: (1, {'@': 144}), 19: (1, {'@': 144}), 17: (1, {'@': 144}), 0: (1, {'@': 144})}, 10: {2: (1, {'@': 50}), 1: (1, {'@': 50})}, 11: {37: (0, 211), 15: (0, 236), 1: (0, 224)}, 12: {5: (1, {'@': 117}), 38: (1, {'@': 117}), 6: (1, {'@': 117}), 1: (1, {'@': 117}), 8: (1, {'@': 117}), 10: (1, {'@': 117}), 11: (1, {'@': 117}), 12: (1, {'@': 117}), 13: (1, {'@': 117}), 14: (1, {'@': 117}), 3: (1, {'@': 117}), 39: (1, {'@': 117}), 7: (1, {'@': 117}), 40: (1, {'@': 117}), 2: (1, {'@': 117}), 16: (1, {'@': 117}), 9: (1, {'@': 117}), 15: (1, {'@': 117})}, 13: {3: (0, 76), 17: (0, 227), 5: (0, 119), 19: (0, 176), 28: (0, 131), 41: (0, 167), 25: (0, 188), 42: (0, 235)}, 14: {5: (1, {'@': 123}), 38: (1, {'@': 123}), 6: (1, {'@': 123}), 1: (1, {'@': 123}), 8: (1, {'@': 123}), 10: (1, {'@': 123}), 11: (1, {'@': 123}), 12: (1, {'@': 123}), 13: (1, {'@': 123}), 14: (1, {'@': 123}), 3: (1, {'@': 123}), 39: (1, {'@': 123}), 7: (1, {'@': 123}), 40: (1, {'@': 123}), 2: (1, {'@': 123}), 16: (1, {'@': 123}), 9: (1, {'@': 123}), 15: (1, {'@': 123}), 43: (1, {'@': 123})}, 15: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 66), 25: (0, 182)}, 16: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 45: (0, 70), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221)}, 17: {5: (1, {'@': 77}), 29: (1, {'@': 77}), 34: (1, {'@': 77}), 33: (1, {'@': 77}), 35: (1, {'@': 77}), 36: (1, {'@': 77}), 3: (1, {'@': 77}), 28: (1, {'@': 77}), 30: (1, {'@': 77}), 31: (1, {'@': 77}), 2: (1, {'@': 77}), 32: (1, {'@': 77}), 15: (1, {'@': 77}), 21: (1, {'@': 77}), 0: (1, {'@': 77}), 19: (1, {'@': 77}), 17: (1, {'@': 77}), 22: (1, {'@': 77})}, 18: {7: (1, {'@': 143}), 1: (1, {'@': 143})}, 19: {7: (0, 187)}, 20: {36: (0, 241), 46: (0, 216), 7: (0, 198), 30: (0, 26), 47: (0, 160)}, 21: {12: (0, 206), 9: (1, {'@': 103}), 7: (1, {'@': 103})}, 22: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 234), 25: (0, 182)}, 23: {2: (1, {'@': 49}), 1: (1, {'@': 49})}, 24: {5: (1, {'@': 91}), 29: (1, {'@': 91}), 34: (1, {'@': 91}), 33: (1, {'@': 91}), 35: (1, {'@': 91}), 36: (1, {'@': 91}), 3: (1, {'@': 91}), 28: (1, {'@': 91}), 30: (1, {'@': 91}), 31: (1, {'@': 91}), 2: (1, {'@': 91}), 32: (1, {'@': 91}), 15: (1, {'@': 91}), 21: (1, {'@': 91}), 0: (1, {'@': 91}), 19: (1, {'@': 91}), 17: (1, {'@': 91}), 22: (1, {'@': 91}), 48: (1, {'@': 91})}, 25: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 45: (0, 107), 3: (0, 74), 20: (0, 221)}, 26: {21: (1, {'@': 44})}, 27: {2: (1, {'@': 52}), 1: (1, {'@': 52}), 15: (1, {'@': 52})}, 28: {36: (0, 241), 44: (0, 2), 21: (0, 128), 24: (0, 203), 33: (0, 0), 23: (0, 199), 18: (0, 215), 49: (0, 63), 32: (0, 61), 50: (0, 54), 19: (0, 176), 28: (0, 68), 0: (0, 166), 22: (0, 244), 51: (0, 34), 2: (0, 36), 5: (0, 245), 52: (0, 97), 25: (0, 182), 53: (0, 57), 54: (0, 17), 55: (0, 40), 46: (0, 42), 17: (0, 227), 31: (0, 141), 56: (0, 150), 3: (0, 74), 30: (0, 26), 57: (0, 222), 58: (0, 175), 15: (0, 237), 34: (0, 98), 20: (0, 221), 35: (0, 95), 59: (0, 184), 60: (0, 102), 29: (0, 180), 61: (0, 106), 62: (0, 174), 45: (0, 137)}, 29: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 53: (0, 177), 45: (0, 137)}, 30: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 53: (0, 208), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 137)}, 31: {5: (1, {'@': 120}), 38: (1, {'@': 120}), 6: (1, {'@': 120}), 1: (1, {'@': 120}), 8: (1, {'@': 120}), 10: (1, {'@': 120}), 11: (1, {'@': 120}), 12: (1, {'@': 120}), 13: (1, {'@': 120}), 14: (1, {'@': 120}), 3: (1, {'@': 120}), 39: (1, {'@': 120}), 7: (1, {'@': 120}), 40: (1, {'@': 120}), 2: (1, {'@': 120}), 16: (1, {'@': 120}), 9: (1, {'@': 120}), 15: (1, {'@': 120})}, 32: {63: (0, 243), 24: (0, 121), 21: (0, 128)}, 33: {16: (0, 77)}, 34: {5: (1, {'@': 78}), 29: (1, {'@': 78}), 34: (1, {'@': 78}), 33: (1, {'@': 78}), 35: (1, {'@': 78}), 36: (1, {'@': 78}), 3: (1, {'@': 78}), 28: (1, {'@': 78}), 30: (1, {'@': 78}), 31: (1, {'@': 78}), 2: (1, {'@': 78}), 32: (1, {'@': 78}), 15: (1, {'@': 78}), 21: (1, {'@': 78}), 0: (1, {'@': 78}), 19: (1, {'@': 78}), 17: (1, {'@': 78}), 22: (1, {'@': 78})}, 35: {1: (0, 190), 2: (0, 210)}, 36: {5: (1, {'@': 90}), 29: (1, {'@': 90}), 34: (1, {'@': 90}), 33: (1, {'@': 90}), 35: (1, {'@': 90}), 36: (1, {'@': 90}), 3: (1, {'@': 90}), 28: (1, {'@': 90}), 30: (1, {'@': 90}), 31: (1, {'@': 90}), 2: (1, {'@': 90}), 32: (1, {'@': 90}), 15: (1, {'@': 90}), 21: (1, {'@': 90}), 0: (1, {'@': 90}), 19: (1, {'@': 90}), 17: (1, {'@': 90}), 22: (1, {'@': 90}), 48: (1, {'@': 90})}, 37: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 64: (0, 8), 18: (0, 215), 65: (0, 185), 66: (0, 60), 19: (0, 176), 0: (0, 166), 22: (0, 244), 23: (0, 84), 5: (0, 245), 25: (0, 182), 17: (0, 227), 67: (0, 69), 68: (0, 155), 3: (0, 74), 20: (0, 221)}, 38: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 64: (0, 125), 20: (0, 221)}, 39: {24: (0, 225), 21: (0, 128), 69: (0, 172)}, 40: {5: (1, {'@': 82}), 29: (1, {'@': 82}), 34: (1, {'@': 82}), 33: (1, {'@': 82}), 35: (1, {'@': 82}), 36: (1, {'@': 82}), 3: (1, {'@': 82}), 28: (1, {'@': 82}), 30: (1, {'@': 82}), 31: (1, {'@': 82}), 2: (1, {'@': 82}), 32: (1, {'@': 82}), 15: (1, {'@': 82}), 21: (1, {'@': 82}), 0: (1, {'@': 82}), 19: (1, {'@': 82}), 17: (1, {'@': 82}), 22: (1, {'@': 82}), 48: (1, {'@': 82})}, 41: {24: (0, 94), 21: (0, 128), 69: (0, 72)}, 42: {24: (0, 94), 21: (0, 128), 69: (0, 172)}, 43: {2: (0, 103)}, 44: {44: (0, 2), 21: (0, 128), 24: (0, 203), 33: (0, 0), 23: (0, 199), 18: (0, 215), 49: (0, 63), 32: (0, 61), 50: (0, 54), 19: (0, 176), 28: (0, 68), 0: (0, 166), 22: (0, 244), 2: (0, 36), 5: (0, 245), 52: (0, 97), 25: (0, 182), 53: (0, 57), 55: (0, 40), 57: (0, 142), 17: (0, 227), 56: (0, 150), 3: (0, 74), 58: (0, 175), 34: (0, 98), 20: (0, 221), 35: (0, 95), 59: (0, 184), 60: (0, 102), 29: (0, 180), 61: (0, 106), 45: (0, 137)}, 45: {17: (0, 122), 16: (0, 163)}, 46: {70: (0, 136), 1: (0, 151), 15: (0, 214)}, 47: {65: (0, 19), 44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 64: (0, 8), 18: (0, 215), 66: (0, 60), 19: (0, 176), 0: (0, 166), 22: (0, 244), 23: (0, 84), 5: (0, 245), 25: (0, 182), 17: (0, 227), 67: (0, 69), 68: (0, 155), 3: (0, 74), 20: (0, 221)}, 48: {5: (1, {'@': 56}), 29: (1, {'@': 56}), 34: (1, {'@': 56}), 33: (1, {'@': 56}), 35: (1, {'@': 56}), 36: (1, {'@': 56}), 3: (1, {'@': 56}), 28: (1, {'@': 56}), 30: (1, {'@': 56}), 31: (1, {'@': 56}), 2: (1, {'@': 56}), 32: (1, {'@': 56}), 15: (1, {'@': 56}), 21: (1, {'@': 56}), 0: (1, {'@': 56}), 19: (1, {'@': 56}), 17: (1, {'@': 56}), 22: (1, {'@': 56}), 71: (1, {'@': 56}), 72: (1, {'@': 56})}, 49: {7: (0, 189)}, 50: {71: (1, {'@': 71}), 72: (1, {'@': 71}), 36: (1, {'@': 71}), 30: (1, {'@': 71}), 31: (1, {'@': 71})}, 51: {2: (1, {'@': 65}), 1: (1, {'@': 65})}, 52: {11: (0, 78), 10: (0, 71), 13: (0, 82), 8: (0, 96), 9: (1, {'@': 107}), 12: (1, {'@': 107}), 6: (1, {'@': 107}), 14: (1, {'@': 107}), 7: (1, {'@': 107})}, 53: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 64: (0, 8), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 67: (0, 139), 20: (0, 221)}, 54: {5: (1, {'@': 83}), 29: (1, {'@': 83}), 34: (1, {'@': 83}), 33: (1, {'@': 83}), 35: (1, {'@': 83}), 36: (1, {'@': 83}), 3: (1, {'@': 83}), 28: (1, {'@': 83}), 30: (1, {'@': 83}), 31: (1, {'@': 83}), 2: (1, {'@': 83}), 32: (1, {'@': 83}), 15: (1, {'@': 83}), 21: (1, {'@': 83}), 0: (1, {'@': 83}), 19: (1, {'@': 83}), 17: (1, {'@': 83}), 22: (1, {'@': 83}), 48: (1, {'@': 83})}, 55: {5: (1, {'@': 98}), 29: (1, {'@': 98}), 34: (1, {'@': 98}), 33: (1, {'@': 98}), 35: (1, {'@': 98}), 36: (1, {'@': 98}), 3: (1, {'@': 98}), 28: (1, {'@': 98}), 30: (1, {'@': 98}), 31: (1, {'@': 98}), 2: (1, {'@': 98}), 32: (1, {'@': 98}), 15: (1, {'@': 98}), 21: (1, {'@': 98}), 0: (1, {'@': 98}), 19: (1, {'@': 98}), 17: (1, {'@': 98}), 22: (1, {'@': 98}), 48: (1, {'@': 98})}, 56: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 45: (0, 212), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221)}, 57: {2: (0, 24)}, 58: {2: (1, {'@': 57}), 1: (1, {'@': 57})}, 59: {5: (1, {'@': 95}), 29: (1, {'@': 95}), 34: (1, {'@': 95}), 33: (1, {'@': 95}), 35: (1, {'@': 95}), 36: (1, {'@': 95}), 3: (1, {'@': 95}), 28: (1, {'@': 95}), 30: (1, {'@': 95}), 31: (1, {'@': 95}), 2: (1, {'@': 95}), 32: (1, {'@': 95}), 15: (1, {'@': 95}), 21: (1, {'@': 95}), 0: (1, {'@': 95}), 19: (1, {'@': 95}), 17: (1, {'@': 95}), 22: (1, {'@': 95}), 48: (1, {'@': 95})}, 60: {73: (0, 200), 9: (0, 194), 7: (1, {'@': 102})}, 61: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 53: (0, 43), 3: (0, 74), 20: (0, 221), 2: (0, 55), 45: (0, 137)}, 62: {21: (0, 128), 24: (0, 181)}, 63: {5: (1, {'@': 84}), 29: (1, {'@': 84}), 34: (1, {'@': 84}), 33: (1, {'@': 84}), 35: (1, {'@': 84}), 36: (1, {'@': 84}), 3: (1, {'@': 84}), 28: (1, {'@': 84}), 30: (1, {'@': 84}), 31: (1, {'@': 84}), 2: (1, {'@': 84}), 32: (1, {'@': 84}), 15: (1, {'@': 84}), 21: (1, {'@': 84}), 0: (1, {'@': 84}), 19: (1, {'@': 84}), 17: (1, {'@': 84}), 22: (1, {'@': 84}), 48: (1, {'@': 84})}, 64: {47: (0, 18), 36: (0, 241), 46: (0, 216), 30: (0, 26)}, 65: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 64: (0, 124)}, 66: {5: (1, {'@': 171}), 38: (1, {'@': 171}), 6: (1, {'@': 171}), 1: (1, {'@': 171}), 8: (1, {'@': 171}), 10: (1, {'@': 171}), 11: (1, {'@': 171}), 12: (1, {'@': 171}), 13: (1, {'@': 171}), 14: (1, {'@': 171}), 3: (1, {'@': 171}), 39: (1, {'@': 171}), 7: (1, {'@': 171}), 40: (1, {'@': 171}), 2: (1, {'@': 171}), 16: (1, {'@': 171}), 9: (1, {'@': 171}), 15: (1, {'@': 171})}, 67: {74: (0, 35), 1: (0, 32), 2: (0, 89)}, 68: {75: (0, 28), 36: (0, 241), 44: (0, 2), 21: (0, 128), 24: (0, 203), 33: (0, 0), 23: (0, 199), 18: (0, 215), 49: (0, 63), 32: (0, 61), 50: (0, 54), 19: (0, 176), 28: (0, 68), 0: (0, 166), 22: (0, 244), 51: (0, 34), 2: (0, 36), 5: (0, 245), 52: (0, 97), 25: (0, 182), 53: (0, 57), 55: (0, 40), 54: (0, 17), 46: (0, 42), 17: (0, 227), 31: (0, 141), 62: (0, 9), 56: (0, 150), 3: (0, 74), 15: (0, 73), 30: (0, 26), 57: (0, 222), 58: (0, 175), 34: (0, 98), 20: (0, 221), 35: (0, 95), 59: (0, 184), 60: (0, 102), 29: (0, 180), 61: (0, 106), 45: (0, 137)}, 69: {76: (0, 21), 12: (0, 53), 9: (1, {'@': 104}), 7: (1, {'@': 104})}, 70: {6: (1, {'@': 156}), 7: (1, {'@': 156}), 8: (1, {'@': 156}), 9: (1, {'@': 156}), 10: (1, {'@': 156}), 11: (1, {'@': 156}), 12: (1, {'@': 156}), 13: (1, {'@': 156}), 14: (1, {'@': 156})}, 71: {44: (0, 2), 21: (0, 128), 24: (0, 203), 45: (0, 145), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221)}, 72: {2: (1, {'@': 138}), 1: (1, {'@': 138})}, 73: {5: (1, {'@': 76}), 29: (1, {'@': 76}), 34: (1, {'@': 76}), 33: (1, {'@': 76}), 35: (1, {'@': 76}), 36: (1, {'@': 76}), 3: (1, {'@': 76}), 28: (1, {'@': 76}), 30: (1, {'@': 76}), 31: (1, {'@': 76}), 2: (1, {'@': 76}), 32: (1, {'@': 76}), 15: (1, {'@': 76}), 21: (1, {'@': 76}), 0: (1, {'@': 76}), 19: (1, {'@': 76}), 17: (1, {'@': 76}), 22: (1, {'@': 76}), 48: (1, {'@': 76}), 71: (1, {'@': 76}), 72: (1, {'@': 76})}, 74: {17: (0, 227), 18: (0, 193), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 25: (0, 182)}, 75: {5: (1, {'@': 121}), 38: (1, {'@': 121}), 6: (1, {'@': 121}), 1: (1, {'@': 121}), 8: (1, {'@': 121}), 10: (1, {'@': 121}), 11: (1, {'@': 121}), 12: (1, {'@': 121}), 13: (1, {'@': 121}), 14: (1, {'@': 121}), 3: (1, {'@': 121}), 39: (1, {'@': 121}), 7: (1, {'@': 121}), 40: (1, {'@': 121}), 2: (1, {'@': 121}), 16: (1, {'@': 121}), 9: (1, {'@': 121}), 15: (1, {'@': 121})}, 76: {17: (0, 227), 19: (0, 176), 25: (0, 240)}, 77: {7: (1, {'@': 73}), 1: (1, {'@': 73})}, 78: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 45: (0, 126), 17: (0, 227), 3: (0, 74), 20: (0, 221)}, 79: {44: (0, 2), 21: (0, 128), 53: (0, 164), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 7: (0, 173), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 137)}, 80: {48: (0, 110), 5: (1, {'@': 93}), 29: (1, {'@': 93}), 34: (1, {'@': 93}), 33: (1, {'@': 93}), 35: (1, {'@': 93}), 36: (1, {'@': 93}), 3: (1, {'@': 93}), 28: (1, {'@': 93}), 30: (1, {'@': 93}), 31: (1, {'@': 93}), 2: (1, {'@': 93}), 32: (1, {'@': 93}), 15: (1, {'@': 93}), 21: (1, {'@': 93}), 0: (1, {'@': 93}), 19: (1, {'@': 93}), 17: (1, {'@': 93}), 22: (1, {'@': 93})}, 81: {1: (0, 29), 7: (0, 31)}, 82: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 147)}, 83: {77: (0, 230), 36: (0, 241), 78: (0, 232), 46: (0, 39), 79: (0, 127), 72: (0, 62), 31: (0, 141), 54: (0, 86), 80: (0, 104), 30: (0, 26), 51: (0, 179)}, 84: {5: (1, {'@': 114}), 38: (1, {'@': 114}), 6: (1, {'@': 114}), 1: (1, {'@': 114}), 8: (1, {'@': 114}), 10: (1, {'@': 114}), 11: (1, {'@': 114}), 12: (1, {'@': 114}), 13: (1, {'@': 114}), 14: (1, {'@': 114}), 3: (1, {'@': 114}), 39: (1, {'@': 114}), 7: (1, {'@': 114}), 40: (1, {'@': 114}), 2: (1, {'@': 114}), 16: (1, {'@': 114}), 9: (1, {'@': 114}), 15: (1, {'@': 114})}, 85: {3: (0, 116), 5: (0, 207), 6: (1, {'@': 109}), 7: (1, {'@': 109}), 8: (1, {'@': 109}), 9: (1, {'@': 109}), 10: (1, {'@': 109}), 11: (1, {'@': 109}), 12: (1, {'@': 109}), 13: (1, {'@': 109}), 14: (1, {'@': 109}), 2: (1, {'@': 109}), 15: (1, {'@': 109}), 1: (1, {'@': 109}), 16: (1, {'@': 109})}, 86: {71: (1, {'@': 128}), 72: (1, {'@': 128}), 36: (1, {'@': 128}), 30: (1, {'@': 128}), 31: (1, {'@': 128})}, 87: {71: (1, {'@': 133}), 72: (1, {'@': 133}), 36: (1, {'@': 133}), 30: (1, {'@': 133}), 31: (1, {'@': 133})}, 88: {24: (0, 94), 21: (0, 128), 69: (0, 168)}, 89: {5: (1, {'@': 42}), 29: (1, {'@': 42}), 34: (1, {'@': 42}), 33: (1, {'@': 42}), 35: (1, {'@': 42}), 36: (1, {'@': 42}), 3: (1, {'@': 42}), 28: (1, {'@': 42}), 30: (1, {'@': 42}), 31: (1, {'@': 42}), 2: (1, {'@': 42}), 32: (1, {'@': 42}), 15: (1, {'@': 42}), 21: (1, {'@': 42}), 0: (1, {'@': 42}), 19: (1, {'@': 42}), 17: (1, {'@': 42}), 22: (1, {'@': 42}), 71: (1, {'@': 42}), 72: (1, {'@': 42})}, 90: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 215), 25: (0, 182), 44: (0, 233)}, 91: {43: (0, 114)}, 92: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 64: (0, 8), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 67: (0, 69), 3: (0, 74), 66: (0, 161), 20: (0, 221)}, 93: {71: (1, {'@': 131}), 72: (1, {'@': 131}), 36: (1, {'@': 131}), 30: (1, {'@': 131}), 31: (1, {'@': 131})}, 94: {43: (0, 100), 81: (0, 231), 2: (1, {'@': 62}), 1: (1, {'@': 62})}, 95: {0: (0, 37)}, 96: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 148)}, 97: {5: (1, {'@': 87}), 29: (1, {'@': 87}), 34: (1, {'@': 87}), 33: (1, {'@': 87}), 35: (1, {'@': 87}), 36: (1, {'@': 87}), 3: (1, {'@': 87}), 28: (1, {'@': 87}), 30: (1, {'@': 87}), 31: (1, {'@': 87}), 2: (1, {'@': 87}), 32: (1, {'@': 87}), 15: (1, {'@': 87}), 21: (1, {'@': 87}), 0: (1, {'@': 87}), 19: (1, {'@': 87}), 17: (1, {'@': 87}), 22: (1, {'@': 87}), 48: (1, {'@': 87})}, 98: {2: (0, 59)}, 99: {24: (0, 121), 63: (0, 67), 21: (0, 128)}, 100: {44: (0, 2), 45: (0, 137), 21: (0, 128), 53: (0, 129), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 28: (0, 123), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 82: (0, 209), 20: (0, 221)}, 101: {36: (0, 241), 46: (0, 216), 47: (0, 5), 7: (0, 118), 30: (0, 26)}, 102: {5: (1, {'@': 80}), 29: (1, {'@': 80}), 34: (1, {'@': 80}), 33: (1, {'@': 80}), 35: (1, {'@': 80}), 36: (1, {'@': 80}), 3: (1, {'@': 80}), 28: (1, {'@': 80}), 30: (1, {'@': 80}), 31: (1, {'@': 80}), 2: (1, {'@': 80}), 32: (1, {'@': 80}), 15: (1, {'@': 80}), 21: (1, {'@': 80}), 0: (1, {'@': 80}), 19: (1, {'@': 80}), 17: (1, {'@': 80}), 22: (1, {'@': 80}), 48: (1, {'@': 80})}, 103: {5: (1, {'@': 97}), 29: (1, {'@': 97}), 34: (1, {'@': 97}), 33: (1, {'@': 97}), 35: (1, {'@': 97}), 36: (1, {'@': 97}), 3: (1, {'@': 97}), 28: (1, {'@': 97}), 30: (1, {'@': 97}), 31: (1, {'@': 97}), 2: (1, {'@': 97}), 32: (1, {'@': 97}), 15: (1, {'@': 97}), 21: (1, {'@': 97}), 0: (1, {'@': 97}), 19: (1, {'@': 97}), 17: (1, {'@': 97}), 22: (1, {'@': 97}), 48: (1, {'@': 97})}, 104: {71: (1, {'@': 130}), 72: (1, {'@': 130}), 36: (1, {'@': 130}), 30: (1, {'@': 130}), 31: (1, {'@': 130})}, 105: {6: (1, {'@': 155}), 7: (1, {'@': 155}), 8: (1, {'@': 155}), 9: (1, {'@': 155}), 10: (1, {'@': 155}), 11: (1, {'@': 155}), 12: (1, {'@': 155}), 13: (1, {'@': 155}), 14: (1, {'@': 155})}, 106: {5: (1, {'@': 86}), 29: (1, {'@': 86}), 34: (1, {'@': 86}), 33: (1, {'@': 86}), 35: (1, {'@': 86}), 36: (1, {'@': 86}), 3: (1, {'@': 86}), 28: (1, {'@': 86}), 30: (1, {'@': 86}), 31: (1, {'@': 86}), 2: (1, {'@': 86}), 32: (1, {'@': 86}), 15: (1, {'@': 86}), 21: (1, {'@': 86}), 0: (1, {'@': 86}), 19: (1, {'@': 86}), 17: (1, {'@': 86}), 22: (1, {'@': 86}), 48: (1, {'@': 86})}, 107: {6: (1, {'@': 154}), 7: (1, {'@': 154}), 8: (1, {'@': 154}), 9: (1, {'@': 154}), 10: (1, {'@': 154}), 11: (1, {'@': 154}), 12: (1, {'@': 154}), 13: (1, {'@': 154}), 14: (1, {'@': 154})}, 108: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 44: (0, 157), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 215), 25: (0, 182)}, 109: {7: (0, 138), 1: (0, 64)}, 110: {44: (0, 2), 21: (0, 128), 24: (0, 203), 33: (0, 0), 23: (0, 199), 18: (0, 215), 49: (0, 63), 32: (0, 61), 50: (0, 54), 19: (0, 176), 28: (0, 68), 0: (0, 166), 22: (0, 244), 2: (0, 36), 5: (0, 245), 52: (0, 97), 25: (0, 182), 53: (0, 57), 55: (0, 40), 17: (0, 227), 56: (0, 150), 3: (0, 74), 57: (0, 169), 58: (0, 175), 34: (0, 98), 20: (0, 221), 35: (0, 95), 59: (0, 184), 60: (0, 102), 29: (0, 180), 61: (0, 106), 45: (0, 137)}, 111: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 64: (0, 159), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221)}, 112: {43: (0, 170), 2: (1, {'@': 60}), 1: (1, {'@': 60})}, 113: {2: (1, {'@': 135}), 1: (1, {'@': 135})}, 114: {3: (0, 76), 17: (0, 227), 5: (0, 119), 19: (0, 176), 28: (0, 131), 41: (0, 167), 25: (0, 188), 42: (0, 183)}, 115: {71: (1, {'@': 67}), 72: (1, {'@': 67}), 36: (1, {'@': 67}), 30: (1, {'@': 67}), 31: (1, {'@': 67})}, 116: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 215), 25: (0, 182), 44: (0, 120)}, 117: {5: (1, {'@': 164}), 6: (1, {'@': 164}), 1: (1, {'@': 164}), 8: (1, {'@': 164}), 10: (1, {'@': 164}), 11: (1, {'@': 164}), 12: (1, {'@': 164}), 13: (1, {'@': 164}), 14: (1, {'@': 164}), 3: (1, {'@': 164}), 7: (1, {'@': 164}), 2: (1, {'@': 164}), 16: (1, {'@': 164}), 15: (1, {'@': 164}), 9: (1, {'@': 164})}, 118: {28: (0, 68), 50: (0, 219)}, 119: {25: (0, 27), 17: (0, 227), 19: (0, 176)}, 120: {5: (1, {'@': 165}), 6: (1, {'@': 165}), 1: (1, {'@': 165}), 8: (1, {'@': 165}), 10: (1, {'@': 165}), 11: (1, {'@': 165}), 12: (1, {'@': 165}), 13: (1, {'@': 165}), 14: (1, {'@': 165}), 3: (1, {'@': 165}), 7: (1, {'@': 165}), 2: (1, {'@': 165}), 16: (1, {'@': 165}), 15: (1, {'@': 165}), 9: (1, {'@': 165})}, 121: {43: (0, 135), 81: (0, 45)}, 122: {16: (0, 91)}, 123: {44: (0, 2), 15: (0, 7), 21: (0, 128), 24: (0, 203), 18: (0, 215), 53: (0, 11), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 137)}, 124: {9: (1, {'@': 151}), 12: (1, {'@': 151}), 6: (1, {'@': 151}), 14: (1, {'@': 151}), 7: (1, {'@': 151})}, 125: {9: (1, {'@': 150}), 12: (1, {'@': 150}), 6: (1, {'@': 150}), 14: (1, {'@': 150}), 7: (1, {'@': 150})}, 126: {6: (1, {'@': 161}), 7: (1, {'@': 161}), 8: (1, {'@': 161}), 9: (1, {'@': 161}), 10: (1, {'@': 161}), 11: (1, {'@': 161}), 12: (1, {'@': 161}), 13: (1, {'@': 161}), 14: (1, {'@': 161})}, 127: {71: (1, {'@': 39})}, 128: {81: (1, {'@': 127}), 5: (1, {'@': 127}), 38: (1, {'@': 127}), 6: (1, {'@': 127}), 1: (1, {'@': 127}), 8: (1, {'@': 127}), 10: (1, {'@': 127}), 11: (1, {'@': 127}), 12: (1, {'@': 127}), 13: (1, {'@': 127}), 14: (1, {'@': 127}), 3: (1, {'@': 127}), 39: (1, {'@': 127}), 7: (1, {'@': 127}), 40: (1, {'@': 127}), 2: (1, {'@': 127}), 16: (1, {'@': 127}), 9: (1, {'@': 127}), 15: (1, {'@': 127}), 0: (1, {'@': 127}), 43: (1, {'@': 127})}, 129: {2: (1, {'@': 63}), 1: (1, {'@': 63})}, 130: {53: (0, 153), 44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 137)}, 131: {3: (0, 76), 17: (0, 227), 5: (0, 119), 41: (0, 46), 19: (0, 176), 15: (0, 23), 25: (0, 188)}, 132: {15: (1, {'@': 140}), 1: (1, {'@': 140}), 7: (1, {'@': 140})}, 133: {5: (1, {'@': 55}), 29: (1, {'@': 55}), 34: (1, {'@': 55}), 33: (1, {'@': 55}), 35: (1, {'@': 55}), 36: (1, {'@': 55}), 3: (1, {'@': 55}), 28: (1, {'@': 55}), 30: (1, {'@': 55}), 31: (1, {'@': 55}), 2: (1, {'@': 55}), 32: (1, {'@': 55}), 15: (1, {'@': 55}), 21: (1, {'@': 55}), 0: (1, {'@': 55}), 19: (1, {'@': 55}), 17: (1, {'@': 55}), 22: (1, {'@': 55}), 71: (1, {'@': 55}), 72: (1, {'@': 55})}, 134: {9: (1, {'@': 146}), 7: (1, {'@': 146})}, 135: {3: (0, 76), 17: (0, 227), 5: (0, 119), 19: (0, 176), 28: (0, 131), 41: (0, 167), 42: (0, 195), 25: (0, 188)}, 136: {15: (0, 10), 1: (0, 156)}, 137: {2: (1, {'@': 99}), 15: (1, {'@': 99}), 7: (1, {'@': 99}), 1: (1, {'@': 99}), 16: (1, {'@': 99})}, 138: {28: (0, 68), 50: (0, 154)}, 139: {9: (1, {'@': 148}), 12: (1, {'@': 148}), 7: (1, {'@': 148})}, 140: {81: (0, 33), 7: (1, {'@': 74}), 1: (1, {'@': 74})}, 141: {36: (0, 241), 30: (0, 26), 46: (0, 99)}, 142: {5: (1, {'@': 94}), 29: (1, {'@': 94}), 34: (1, {'@': 94}), 33: (1, {'@': 94}), 35: (1, {'@': 94}), 36: (1, {'@': 94}), 3: (1, {'@': 94}), 28: (1, {'@': 94}), 30: (1, {'@': 94}), 31: (1, {'@': 94}), 2: (1, {'@': 94}), 32: (1, {'@': 94}), 15: (1, {'@': 94}), 21: (1, {'@': 94}), 0: (1, {'@': 94}), 19: (1, {'@': 94}), 17: (1, {'@': 94}), 22: (1, {'@': 94}), 48: (1, {'@': 94})}, 143: {43: (0, 228), 2: (1, {'@': 58}), 1: (1, {'@': 58})}, 144: {5: (1, {'@': 89}), 29: (1, {'@': 89}), 34: (1, {'@': 89}), 33: (1, {'@': 89}), 35: (1, {'@': 89}), 36: (1, {'@': 89}), 3: (1, {'@': 89}), 28: (1, {'@': 89}), 30: (1, {'@': 89}), 31: (1, {'@': 89}), 2: (1, {'@': 89}), 32: (1, {'@': 89}), 15: (1, {'@': 89}), 21: (1, {'@': 89}), 0: (1, {'@': 89}), 19: (1, {'@': 89}), 17: (1, {'@': 89}), 22: (1, {'@': 89}), 48: (1, {'@': 89})}, 145: {6: (1, {'@': 159}), 7: (1, {'@': 159}), 8: (1, {'@': 159}), 9: (1, {'@': 159}), 10: (1, {'@': 159}), 11: (1, {'@': 159}), 12: (1, {'@': 159}), 13: (1, {'@': 159}), 14: (1, {'@': 159})}, 146: {16: (0, 143)}, 147: {6: (1, {'@': 160}), 7: (1, {'@': 160}), 8: (1, {'@': 160}), 9: (1, {'@': 160}), 10: (1, {'@': 160}), 11: (1, {'@': 160}), 12: (1, {'@': 160}), 13: (1, {'@': 160}), 14: (1, {'@': 160})}, 148: {6: (1, {'@': 158}), 7: (1, {'@': 158}), 8: (1, {'@': 158}), 9: (1, {'@': 158}), 10: (1, {'@': 158}), 11: (1, {'@': 158}), 12: (1, {'@': 158}), 13: (1, {'@': 158}), 14: (1, {'@': 158})}, 149: {9: (1, {'@': 149}), 12: (1, {'@': 149}), 7: (1, {'@': 149})}, 150: {5: (1, {'@': 85}), 29: (1, {'@': 85}), 34: (1, {'@': 85}), 33: (1, {'@': 85}), 35: (1, {'@': 85}), 36: (1, {'@': 85}), 3: (1, {'@': 85}), 28: (1, {'@': 85}), 30: (1, {'@': 85}), 31: (1, {'@': 85}), 2: (1, {'@': 85}), 32: (1, {'@': 85}), 15: (1, {'@': 85}), 21: (1, {'@': 85}), 0: (1, {'@': 85}), 19: (1, {'@': 85}), 17: (1, {'@': 85}), 22: (1, {'@': 85}), 48: (1, {'@': 85})}, 151: {3: (0, 76), 17: (0, 227), 5: (0, 119), 41: (0, 229), 19: (0, 176), 25: (0, 188)}, 152: {9: (1, {'@': 153}), 12: (1, {'@': 153}), 6: (1, {'@': 153}), 14: (1, {'@': 153}), 7: (1, {'@': 153})}, 153: {16: (0, 14)}, 154: {71: (1, {'@': 70}), 72: (1, {'@': 70}), 36: (1, {'@': 70}), 30: (1, {'@': 70}), 31: (1, {'@': 70})}, 155: {7: (1, {'@': 100})}, 156: {3: (0, 76), 17: (0, 227), 5: (0, 119), 19: (0, 176), 41: (0, 238), 25: (0, 188)}, 157: {5: (1, {'@': 162}), 6: (1, {'@': 162}), 1: (1, {'@': 162}), 8: (1, {'@': 162}), 10: (1, {'@': 162}), 11: (1, {'@': 162}), 12: (1, {'@': 162}), 13: (1, {'@': 162}), 14: (1, {'@': 162}), 3: (1, {'@': 162}), 7: (1, {'@': 162}), 2: (1, {'@': 162}), 16: (1, {'@': 162}), 15: (1, {'@': 162}), 9: (1, {'@': 162})}, 158: {5: (1, {'@': 169}), 38: (1, {'@': 169}), 6: (1, {'@': 169}), 1: (1, {'@': 169}), 8: (1, {'@': 169}), 10: (1, {'@': 169}), 11: (1, {'@': 169}), 12: (1, {'@': 169}), 13: (1, {'@': 169}), 14: (1, {'@': 169}), 3: (1, {'@': 169}), 39: (1, {'@': 169}), 7: (1, {'@': 169}), 40: (1, {'@': 169}), 2: (1, {'@': 169}), 16: (1, {'@': 169}), 9: (1, {'@': 169}), 15: (1, {'@': 169})}, 159: {9: (1, {'@': 152}), 12: (1, {'@': 152}), 6: (1, {'@': 152}), 14: (1, {'@': 152}), 7: (1, {'@': 152})}, 160: {26: (0, 109), 7: (0, 201), 1: (0, 242)}, 161: {9: (1, {'@': 147}), 7: (1, {'@': 147})}, 162: {28: (0, 68), 50: (0, 205)}, 163: {43: (0, 13)}, 164: {37: (0, 81), 7: (0, 75), 1: (0, 224)}, 165: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 64: (0, 152), 20: (0, 221)}, 166: {53: (0, 49), 44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 137)}, 167: {2: (1, {'@': 48}), 1: (1, {'@': 48})}, 168: {2: (1, {'@': 139}), 1: (1, {'@': 139})}, 169: {5: (1, {'@': 92}), 29: (1, {'@': 92}), 34: (1, {'@': 92}), 33: (1, {'@': 92}), 35: (1, {'@': 92}), 36: (1, {'@': 92}), 3: (1, {'@': 92}), 28: (1, {'@': 92}), 30: (1, {'@': 92}), 31: (1, {'@': 92}), 2: (1, {'@': 92}), 32: (1, {'@': 92}), 15: (1, {'@': 92}), 21: (1, {'@': 92}), 0: (1, {'@': 92}), 19: (1, {'@': 92}), 17: (1, {'@': 92}), 22: (1, {'@': 92}), 48: (1, {'@': 92})}, 170: {44: (0, 2), 45: (0, 137), 21: (0, 128), 53: (0, 129), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 28: (0, 123), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 82: (0, 217), 17: (0, 227), 3: (0, 74), 20: (0, 221)}, 171: {5: (1, {'@': 96}), 29: (1, {'@': 96}), 34: (1, {'@': 96}), 33: (1, {'@': 96}), 35: (1, {'@': 96}), 36: (1, {'@': 96}), 3: (1, {'@': 96}), 28: (1, {'@': 96}), 30: (1, {'@': 96}), 31: (1, {'@': 96}), 2: (1, {'@': 96}), 32: (1, {'@': 96}), 15: (1, {'@': 96}), 21: (1, {'@': 96}), 0: (1, {'@': 96}), 19: (1, {'@': 96}), 17: (1, {'@': 96}), 22: (1, {'@': 96}), 48: (1, {'@': 96})}, 172: {83: (0, 1), 2: (0, 48), 1: (0, 41)}, 173: {5: (1, {'@': 122}), 38: (1, {'@': 122}), 6: (1, {'@': 122}), 1: (1, {'@': 122}), 8: (1, {'@': 122}), 10: (1, {'@': 122}), 11: (1, {'@': 122}), 12: (1, {'@': 122}), 13: (1, {'@': 122}), 14: (1, {'@': 122}), 3: (1, {'@': 122}), 39: (1, {'@': 122}), 7: (1, {'@': 122}), 40: (1, {'@': 122}), 2: (1, {'@': 122}), 16: (1, {'@': 122}), 9: (1, {'@': 122}), 15: (1, {'@': 122})}, 174: {3: (1, {'@': 145}), 22: (1, {'@': 145}), 5: (1, {'@': 145}), 28: (1, {'@': 145}), 29: (1, {'@': 145}), 30: (1, {'@': 145}), 31: (1, {'@': 145}), 2: (1, {'@': 145}), 32: (1, {'@': 145}), 33: (1, {'@': 145}), 15: (1, {'@': 145}), 21: (1, {'@': 145}), 34: (1, {'@': 145}), 35: (1, {'@': 145}), 36: (1, {'@': 145}), 19: (1, {'@': 145}), 17: (1, {'@': 145}), 0: (1, {'@': 145})}, 175: {5: (1, {'@': 81}), 29: (1, {'@': 81}), 34: (1, {'@': 81}), 33: (1, {'@': 81}), 35: (1, {'@': 81}), 36: (1, {'@': 81}), 3: (1, {'@': 81}), 28: (1, {'@': 81}), 30: (1, {'@': 81}), 31: (1, {'@': 81}), 2: (1, {'@': 81}), 32: (1, {'@': 81}), 15: (1, {'@': 81}), 21: (1, {'@': 81}), 0: (1, {'@': 81}), 19: (1, {'@': 81}), 17: (1, {'@': 81}), 22: (1, {'@': 81}), 48: (1, {'@': 81})}, 176: {5: (1, {'@': 126}), 38: (1, {'@': 126}), 6: (1, {'@': 126}), 1: (1, {'@': 126}), 8: (1, {'@': 126}), 10: (1, {'@': 126}), 11: (1, {'@': 126}), 12: (1, {'@': 126}), 13: (1, {'@': 126}), 14: (1, {'@': 126}), 3: (1, {'@': 126}), 39: (1, {'@': 126}), 7: (1, {'@': 126}), 40: (1, {'@': 126}), 2: (1, {'@': 126}), 16: (1, {'@': 126}), 9: (1, {'@': 126}), 15: (1, {'@': 126})}, 177: {15: (1, {'@': 141}), 1: (1, {'@': 141}), 7: (1, {'@': 141})}, 178: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 25: (0, 182), 18: (0, 186)}, 179: {71: (1, {'@': 129}), 72: (1, {'@': 129}), 36: (1, {'@': 129}), 30: (1, {'@': 129}), 31: (1, {'@': 129})}, 180: {2: (0, 171)}, 181: {0: (0, 20)}, 182: {5: (1, {'@': 115}), 38: (1, {'@': 115}), 6: (1, {'@': 115}), 1: (1, {'@': 115}), 8: (1, {'@': 115}), 10: (1, {'@': 115}), 11: (1, {'@': 115}), 12: (1, {'@': 115}), 13: (1, {'@': 115}), 14: (1, {'@': 115}), 3: (1, {'@': 115}), 39: (1, {'@': 115}), 7: (1, {'@': 115}), 40: (1, {'@': 115}), 2: (1, {'@': 115}), 16: (1, {'@': 115}), 9: (1, {'@': 115}), 15: (1, {'@': 115})}, 183: {2: (1, {'@': 45}), 1: (1, {'@': 45})}, 184: {5: (1, {'@': 88}), 29: (1, {'@': 88}), 34: (1, {'@': 88}), 33: (1, {'@': 88}), 35: (1, {'@': 88}), 36: (1, {'@': 88}), 3: (1, {'@': 88}), 28: (1, {'@': 88}), 30: (1, {'@': 88}), 31: (1, {'@': 88}), 2: (1, {'@': 88}), 32: (1, {'@': 88}), 15: (1, {'@': 88}), 21: (1, {'@': 88}), 0: (1, {'@': 88}), 19: (1, {'@': 88}), 17: (1, {'@': 88}), 22: (1, {'@': 88}), 48: (1, {'@': 88})}, 185: {7: (0, 44)}, 186: {5: (1, {'@': 170}), 38: (1, {'@': 170}), 6: (1, {'@': 170}), 1: (1, {'@': 170}), 8: (1, {'@': 170}), 10: (1, {'@': 170}), 11: (1, {'@': 170}), 12: (1, {'@': 170}), 13: (1, {'@': 170}), 14: (1, {'@': 170}), 3: (1, {'@': 170}), 39: (1, {'@': 170}), 7: (1, {'@': 170}), 40: (1, {'@': 170}), 2: (1, {'@': 170}), 16: (1, {'@': 170}), 9: (1, {'@': 170}), 15: (1, {'@': 170})}, 187: {44: (0, 2), 21: (0, 128), 24: (0, 203), 33: (0, 0), 23: (0, 199), 18: (0, 215), 49: (0, 63), 32: (0, 61), 50: (0, 54), 19: (0, 176), 28: (0, 68), 0: (0, 166), 22: (0, 244), 2: (0, 36), 5: (0, 245), 57: (0, 80), 52: (0, 97), 25: (0, 182), 53: (0, 57), 55: (0, 40), 17: (0, 227), 56: (0, 150), 3: (0, 74), 58: (0, 175), 34: (0, 98), 20: (0, 221), 35: (0, 95), 59: (0, 184), 60: (0, 102), 29: (0, 180), 61: (0, 106), 45: (0, 137)}, 188: {2: (1, {'@': 54}), 1: (1, {'@': 54}), 15: (1, {'@': 54})}, 189: {5: (1, {'@': 113}), 38: (1, {'@': 113}), 6: (1, {'@': 113}), 1: (1, {'@': 113}), 8: (1, {'@': 113}), 10: (1, {'@': 113}), 11: (1, {'@': 113}), 12: (1, {'@': 113}), 13: (1, {'@': 113}), 14: (1, {'@': 113}), 3: (1, {'@': 113}), 39: (1, {'@': 113}), 7: (1, {'@': 113}), 40: (1, {'@': 113}), 2: (1, {'@': 113}), 16: (1, {'@': 113}), 9: (1, {'@': 113}), 15: (1, {'@': 113})}, 190: {24: (0, 121), 21: (0, 128), 63: (0, 113)}, 191: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 25: (0, 182), 18: (0, 158)}, 192: {44: (0, 2), 21: (0, 128), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 105)}, 193: {5: (1, {'@': 118}), 38: (1, {'@': 118}), 6: (1, {'@': 118}), 1: (1, {'@': 118}), 8: (1, {'@': 118}), 10: (1, {'@': 118}), 11: (1, {'@': 118}), 12: (1, {'@': 118}), 13: (1, {'@': 118}), 14: (1, {'@': 118}), 3: (1, {'@': 118}), 39: (1, {'@': 118}), 7: (1, {'@': 118}), 40: (1, {'@': 118}), 2: (1, {'@': 118}), 16: (1, {'@': 118}), 9: (1, {'@': 118}), 15: (1, {'@': 118})}, 194: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 64: (0, 8), 18: (0, 215), 66: (0, 134), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 67: (0, 69), 3: (0, 74), 20: (0, 221)}, 195: {2: (1, {'@': 47}), 1: (1, {'@': 47})}, 196: {5: (1, {'@': 166}), 38: (1, {'@': 166}), 6: (1, {'@': 166}), 1: (1, {'@': 166}), 8: (1, {'@': 166}), 10: (1, {'@': 166}), 11: (1, {'@': 166}), 12: (1, {'@': 166}), 13: (1, {'@': 166}), 14: (1, {'@': 166}), 3: (1, {'@': 166}), 39: (1, {'@': 166}), 7: (1, {'@': 166}), 40: (1, {'@': 166}), 2: (1, {'@': 166}), 16: (1, {'@': 166}), 9: (1, {'@': 166}), 15: (1, {'@': 166})}, 197: {5: (1, {'@': 119}), 38: (1, {'@': 119}), 6: (1, {'@': 119}), 1: (1, {'@': 119}), 8: (1, {'@': 119}), 10: (1, {'@': 119}), 11: (1, {'@': 119}), 12: (1, {'@': 119}), 13: (1, {'@': 119}), 14: (1, {'@': 119}), 3: (1, {'@': 119}), 39: (1, {'@': 119}), 7: (1, {'@': 119}), 40: (1, {'@': 119}), 2: (1, {'@': 119}), 16: (1, {'@': 119}), 9: (1, {'@': 119}), 15: (1, {'@': 119})}, 198: {28: (0, 68), 50: (0, 204)}, 199: {43: (0, 30), 3: (1, {'@': 114}), 39: (1, {'@': 114}), 2: (1, {'@': 114}), 5: (1, {'@': 114}), 38: (1, {'@': 114}), 40: (1, {'@': 114})}, 200: {9: (0, 92), 7: (1, {'@': 101})}, 201: {28: (0, 68), 50: (0, 50)}, 202: {13: (0, 16), 84: (0, 52), 11: (0, 56), 10: (0, 192), 8: (0, 25), 9: (1, {'@': 108}), 12: (1, {'@': 108}), 6: (1, {'@': 108}), 14: (1, {'@': 108}), 7: (1, {'@': 108})}, 203: {0: (0, 79), 81: (0, 130), 5: (1, {'@': 124}), 38: (1, {'@': 124}), 6: (1, {'@': 124}), 1: (1, {'@': 124}), 8: (1, {'@': 124}), 10: (1, {'@': 124}), 11: (1, {'@': 124}), 12: (1, {'@': 124}), 13: (1, {'@': 124}), 14: (1, {'@': 124}), 3: (1, {'@': 124}), 39: (1, {'@': 124}), 7: (1, {'@': 124}), 40: (1, {'@': 124}), 2: (1, {'@': 124}), 16: (1, {'@': 124}), 9: (1, {'@': 124}), 15: (1, {'@': 124}), 43: (1, {'@': 124})}, 204: {71: (1, {'@': 72}), 72: (1, {'@': 72}), 36: (1, {'@': 72}), 30: (1, {'@': 72}), 31: (1, {'@': 72})}, 205: {71: (1, {'@': 68}), 72: (1, {'@': 68}), 36: (1, {'@': 68}), 30: (1, {'@': 68}), 31: (1, {'@': 68})}, 206: {44: (0, 2), 21: (0, 128), 45: (0, 202), 24: (0, 203), 64: (0, 8), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 67: (0, 149), 3: (0, 74), 20: (0, 221)}, 207: {17: (0, 227), 19: (0, 176), 44: (0, 117), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 18: (0, 215), 25: (0, 182)}, 208: {2: (0, 144)}, 209: {2: (1, {'@': 61}), 1: (1, {'@': 61})}, 210: {5: (1, {'@': 41}), 29: (1, {'@': 41}), 34: (1, {'@': 41}), 33: (1, {'@': 41}), 35: (1, {'@': 41}), 36: (1, {'@': 41}), 3: (1, {'@': 41}), 28: (1, {'@': 41}), 30: (1, {'@': 41}), 31: (1, {'@': 41}), 2: (1, {'@': 41}), 32: (1, {'@': 41}), 15: (1, {'@': 41}), 21: (1, {'@': 41}), 0: (1, {'@': 41}), 19: (1, {'@': 41}), 17: (1, {'@': 41}), 22: (1, {'@': 41}), 71: (1, {'@': 41}), 72: (1, {'@': 41})}, 211: {15: (0, 51), 1: (0, 29)}, 212: {6: (1, {'@': 157}), 7: (1, {'@': 157}), 8: (1, {'@': 157}), 9: (1, {'@': 157}), 10: (1, {'@': 157}), 11: (1, {'@': 157}), 12: (1, {'@': 157}), 13: (1, {'@': 157}), 14: (1, {'@': 157})}, 213: {38: (0, 15), 40: (0, 178), 39: (0, 191), 3: (1, {'@': 111}), 5: (1, {'@': 111}), 6: (1, {'@': 111}), 7: (1, {'@': 111}), 8: (1, {'@': 111}), 9: (1, {'@': 111}), 10: (1, {'@': 111}), 11: (1, {'@': 111}), 12: (1, {'@': 111}), 13: (1, {'@': 111}), 14: (1, {'@': 111}), 2: (1, {'@': 111}), 15: (1, {'@': 111}), 1: (1, {'@': 111}), 16: (1, {'@': 111})}, 214: {2: (1, {'@': 51}), 1: (1, {'@': 51})}, 215: {85: (0, 213), 39: (0, 4), 40: (0, 6), 38: (0, 22), 3: (1, {'@': 112}), 5: (1, {'@': 112}), 6: (1, {'@': 112}), 7: (1, {'@': 112}), 8: (1, {'@': 112}), 9: (1, {'@': 112}), 10: (1, {'@': 112}), 11: (1, {'@': 112}), 12: (1, {'@': 112}), 13: (1, {'@': 112}), 14: (1, {'@': 112}), 2: (1, {'@': 112}), 15: (1, {'@': 112}), 1: (1, {'@': 112}), 16: (1, {'@': 112})}, 216: {21: (0, 128), 24: (0, 140)}, 217: {2: (1, {'@': 59}), 1: (1, {'@': 59})}, 218: {6: (0, 165), 14: (0, 111), 9: (1, {'@': 105}), 7: (1, {'@': 105}), 12: (1, {'@': 105})}, 219: {71: (1, {'@': 69}), 72: (1, {'@': 69}), 36: (1, {'@': 69}), 30: (1, {'@': 69}), 31: (1, {'@': 69})}, 220: {28: (0, 68), 50: (0, 115)}, 221: {5: (1, {'@': 116}), 38: (1, {'@': 116}), 6: (1, {'@': 116}), 1: (1, {'@': 116}), 8: (1, {'@': 116}), 10: (1, {'@': 116}), 11: (1, {'@': 116}), 12: (1, {'@': 116}), 13: (1, {'@': 116}), 14: (1, {'@': 116}), 3: (1, {'@': 116}), 39: (1, {'@': 116}), 7: (1, {'@': 116}), 40: (1, {'@': 116}), 2: (1, {'@': 116}), 16: (1, {'@': 116}), 9: (1, {'@': 116}), 15: (1, {'@': 116})}, 222: {5: (1, {'@': 79}), 29: (1, {'@': 79}), 34: (1, {'@': 79}), 33: (1, {'@': 79}), 35: (1, {'@': 79}), 36: (1, {'@': 79}), 3: (1, {'@': 79}), 28: (1, {'@': 79}), 30: (1, {'@': 79}), 31: (1, {'@': 79}), 2: (1, {'@': 79}), 32: (1, {'@': 79}), 15: (1, {'@': 79}), 21: (1, {'@': 79}), 0: (1, {'@': 79}), 19: (1, {'@': 79}), 17: (1, {'@': 79}), 22: (1, {'@': 79})}, 223: {7: (0, 220), 1: (0, 64)}, 224: {44: (0, 2), 21: (0, 128), 24: (0, 203), 53: (0, 132), 18: (0, 215), 19: (0, 176), 0: (0, 166), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 45: (0, 137)}, 225: {43: (0, 100), 81: (0, 231), 0: (0, 101), 2: (1, {'@': 62}), 1: (1, {'@': 62})}, 226: {71: (1, {'@': 132}), 72: (1, {'@': 132}), 36: (1, {'@': 132}), 30: (1, {'@': 132}), 31: (1, {'@': 132})}, 227: {5: (1, {'@': 125}), 38: (1, {'@': 125}), 6: (1, {'@': 125}), 1: (1, {'@': 125}), 8: (1, {'@': 125}), 10: (1, {'@': 125}), 11: (1, {'@': 125}), 12: (1, {'@': 125}), 13: (1, {'@': 125}), 14: (1, {'@': 125}), 3: (1, {'@': 125}), 39: (1, {'@': 125}), 7: (1, {'@': 125}), 40: (1, {'@': 125}), 2: (1, {'@': 125}), 16: (1, {'@': 125}), 9: (1, {'@': 125}), 15: (1, {'@': 125})}, 228: {44: (0, 2), 45: (0, 137), 21: (0, 128), 53: (0, 129), 24: (0, 203), 18: (0, 215), 19: (0, 176), 0: (0, 166), 28: (0, 123), 22: (0, 244), 5: (0, 245), 23: (0, 84), 25: (0, 182), 17: (0, 227), 3: (0, 74), 20: (0, 221), 82: (0, 58)}, 229: {15: (1, {'@': 136}), 1: (1, {'@': 136})}, 230: {}, 231: {16: (0, 112), 17: (0, 146)}, 232: {36: (0, 241), 54: (0, 93), 31: (0, 141), 51: (0, 226), 46: (0, 39), 72: (0, 62), 80: (0, 87), 30: (0, 26), 71: (1, {'@': 40})}, 233: {5: (1, {'@': 163}), 6: (1, {'@': 163}), 1: (1, {'@': 163}), 8: (1, {'@': 163}), 10: (1, {'@': 163}), 11: (1, {'@': 163}), 12: (1, {'@': 163}), 13: (1, {'@': 163}), 14: (1, {'@': 163}), 3: (1, {'@': 163}), 7: (1, {'@': 163}), 2: (1, {'@': 163}), 16: (1, {'@': 163}), 15: (1, {'@': 163}), 9: (1, {'@': 163})}, 234: {5: (1, {'@': 168}), 38: (1, {'@': 168}), 6: (1, {'@': 168}), 1: (1, {'@': 168}), 8: (1, {'@': 168}), 10: (1, {'@': 168}), 11: (1, {'@': 168}), 12: (1, {'@': 168}), 13: (1, {'@': 168}), 14: (1, {'@': 168}), 3: (1, {'@': 168}), 39: (1, {'@': 168}), 7: (1, {'@': 168}), 40: (1, {'@': 168}), 2: (1, {'@': 168}), 16: (1, {'@': 168}), 9: (1, {'@': 168}), 15: (1, {'@': 168})}, 235: {2: (1, {'@': 46}), 1: (1, {'@': 46})}, 236: {2: (1, {'@': 66}), 1: (1, {'@': 66})}, 237: {5: (1, {'@': 75}), 29: (1, {'@': 75}), 34: (1, {'@': 75}), 33: (1, {'@': 75}), 35: (1, {'@': 75}), 36: (1, {'@': 75}), 3: (1, {'@': 75}), 28: (1, {'@': 75}), 30: (1, {'@': 75}), 31: (1, {'@': 75}), 2: (1, {'@': 75}), 32: (1, {'@': 75}), 15: (1, {'@': 75}), 21: (1, {'@': 75}), 0: (1, {'@': 75}), 19: (1, {'@': 75}), 17: (1, {'@': 75}), 22: (1, {'@': 75}), 48: (1, {'@': 75}), 71: (1, {'@': 75}), 72: (1, {'@': 75})}, 238: {15: (1, {'@': 137}), 1: (1, {'@': 137})}, 239: {5: (1, {'@': 167}), 38: (1, {'@': 167}), 6: (1, {'@': 167}), 1: (1, {'@': 167}), 8: (1, {'@': 167}), 10: (1, {'@': 167}), 11: (1, {'@': 167}), 12: (1, {'@': 167}), 13: (1, {'@': 167}), 14: (1, {'@': 167}), 3: (1, {'@': 167}), 39: (1, {'@': 167}), 7: (1, {'@': 167}), 40: (1, {'@': 167}), 2: (1, {'@': 167}), 16: (1, {'@': 167}), 9: (1, {'@': 167}), 15: (1, {'@': 167})}, 240: {2: (1, {'@': 53}), 1: (1, {'@': 53}), 15: (1, {'@': 53})}, 241: {21: (1, {'@': 43})}, 242: {36: (0, 241), 46: (0, 216), 47: (0, 3), 30: (0, 26)}, 243: {2: (1, {'@': 134}), 1: (1, {'@': 134})}, 244: {17: (0, 227), 18: (0, 197), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 25: (0, 182)}, 245: {17: (0, 227), 19: (0, 176), 20: (0, 221), 0: (0, 166), 21: (0, 128), 18: (0, 12), 3: (0, 74), 22: (0, 244), 5: (0, 245), 23: (0, 84), 24: (0, 203), 25: (0, 182)}}, 'start_states': {'start': 83}, 'end_states': {'start': 230}}, '__type__': 'ParsingFrontend'}, 'rules': [{'@': 39}, {'@': 40}, {'@': 41}, {'@': 42}, {'@': 43}, {'@': 44}, {'@': 45}, {'@': 46}, {'@': 47}, {'@': 48}, {'@': 49}, {'@': 50}, {'@': 51}, {'@': 52}, {'@': 53}, {'@': 54}, {'@': 55}, {'@': 56}, {'@': 57}, {'@': 58}, {'@': 59}, {'@': 60}, {'@': 61}, {'@': 62}, {'@': 63}, {'@': 64}, {'@': 65}, {'@': 66}, {'@': 67}, {'@': 68}, {'@': 69}, {'@': 70}, {'@': 71}, {'@': 72}, {'@': 73}, {'@': 74}, {'@': 75}, {'@': 76}, {'@': 77}, {'@': 78}, {'@': 79}, {'@': 80}, {'@': 81}, {'@': 82}, {'@': 83}, {'@': 84}, {'@': 85}, {'@': 86}, {'@': 87}, {'@': 88}, {'@': 89}, {'@': 90}, {'@': 91}, {'@': 92}, {'@': 93}, {'@': 94}, {'@': 95}, {'@': 96}, {'@': 97}, {'@': 98}, {'@': 99}, {'@': 100}, {'@': 101}, {'@': 102}, {'@': 103}, {'@': 104}, {'@': 105}, {'@': 106}, {'@': 107}, {'@': 108}, {'@': 109}, {'@': 110}, {'@': 111}, {'@': 112}, {'@': 113}, {'@': 114}, {'@': 115}, {'@': 116}, {'@': 117}, {'@': 118}, {'@': 119}, {'@': 120}, {'@': 121}, {'@': 122}, {'@': 123}, {'@': 124}, {'@': 125}, {'@': 126}, {'@': 127}, {'@': 128}, {'@': 129}, {'@': 130}, {'@': 131}, {'@': 132}, {'@': 133}, {'@': 134}, {'@': 135}, {'@': 136}, {'@': 137}, {'@': 138}, {'@': 139}, {'@': 140}, {'@': 141}, {'@': 142}, {'@': 143}, {'@': 144}, {'@': 145}, {'@': 146}, {'@': 147}, {'@': 148}, {'@': 149}, {'@': 150}, {'@': 151}, {'@': 152}, {'@': 153}, {'@': 154}, {'@': 155}, {'@': 156}, {'@': 157}, {'@': 158}, {'@': 159}, {'@': 160}, {'@': 161}, {'@': 162}, {'@': 163}, {'@': 164}, {'@': 165}, {'@': 166}, {'@': 167}, {'@': 168}, {'@': 169}, {'@': 170}, {'@': 171}], 'options': {'debug': False, 'strict': False, 'keep_all_tokens': False, 'tree_class': None, 'cache': False, 'postlex': None, 'parser': 'lalr', 'lexer': 'contextual', 'transformer': None, 'start': ['start'], 'priority': 'normal', 'ambiguity': 'auto', 'regex': False, 'propagate_positions': False, 'lexer_callbacks': {}, 'maybe_placeholders': False, 'edit_terminals': None, 'g_regex_flags': 0, 'use_bytes': False, 'ordered_sets': True, 'import_paths': [], 'source_path': None, '_plugins': {}}, '__type__': 'Lark'}
+)
+MEMO = (
+{0: {'name': 'PLUS', 'pattern': {'value': '+', 'flags': [], 'raw': '"+"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 1: {'name': 'MINUS', 'pattern': {'value': '-', 'flags': [], 'raw': '"-"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 2: {'name': 'MUL', 'pattern': {'value': '*', 'flags': [], 'raw': '"*"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 3: {'name': 'DIV', 'pattern': {'value': '/', 'flags': [], 'raw': '"/"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 4: {'name': 'MOD', 'pattern': {'value': '%', 'flags': [], 'raw': '"%"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 5: {'name': 'LOR', 'pattern': {'value': '||', 'flags': [], 'raw': '"||"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 6: {'name': 'LAND', 'pattern': {'value': '&&', 'flags': [], 'raw': '"&&"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 7: {'name': 'EQ', 'pattern': {'value': '==', 'flags': [], 'raw': '"=="', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 8: {'name': 'NEQ', 'pattern': {'value': '!=', 'flags': [], 'raw': '"!="', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 9: {'name': 'LT', 'pattern': {'value': '<', 'flags': [], 'raw': '"<"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 10: {'name': 'LTE', 'pattern': {'value': '<=', 'flags': [], 'raw': '"<="', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 11: {'name': 'GT', 'pattern': {'value': '>', 'flags': [], 'raw': '">"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 12: {'name': 'GTE', 'pattern': {'value': '>=', 'flags': [], 'raw': '">="', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 13: {'name': 'NOT', 'pattern': {'value': '!', 'flags': [], 'raw': '"!"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 14: {'name': 'LBRACKET', 'pattern': {'value': '[', 'flags': [], 'raw': '"["', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 15: {'name': 'RBRACKET', 'pattern': {'value': ']', 'flags': [], 'raw': '"]"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 16: {'name': 'INT', 'pattern': {'value': '(?:(?:0x|0X)(?:(?:[a-f]|[A-F]|[0-9]))+|[1-9](?:[0-9])*|0(?:[0-7])*)', 'flags': [], 'raw': None, '_width': [1, 18446744073709551616], '__type__': 'PatternRE'}, 'priority': 0, '__type__': 'TerminalDef'}, 17: {'name': 'FLOAT', 'pattern': {'value': '(?:(?:0x|0X)(?:(?:[a-f]|[A-F]|[0-9]))+|[1-9](?:[0-9])*|0(?:[0-7])*)\\.(?:(?:0x|0X)(?:(?:[a-f]|[A-F]|[0-9]))+|[1-9](?:[0-9])*|0(?:[0-7])*)', 'flags': [], 'raw': None, '_width': [3, 18446744073709551616], '__type__': 'PatternRE'}, 'priority': 0, '__type__': 'TerminalDef'}, 18: {'name': 'NAME', 'pattern': {'value': '(?:(?:[A-Z]|[a-z])|_)(?:(?:(?:[A-Z]|[a-z])|[0-9]|_))*', 'flags': [], 'raw': None, '_width': [1, 18446744073709551616], '__type__': 'PatternRE'}, 'priority': 0, '__type__': 'TerminalDef'}, 19: {'name': 'WS', 'pattern': {'value': '(?:[ \t\x0c\r\n])+', 'flags': [], 'raw': None, '_width': [1, 18446744073709551616], '__type__': 'PatternRE'}, 'priority': 0, '__type__': 'TerminalDef'}, 20: {'name': 'C_COMMENT', 'pattern': {'value': '/\\*(.|\n)*?\\*/', 'flags': [], 'raw': None, '_width': [4, 18446744073709551616], '__type__': 'PatternRE'}, 'priority': 0, '__type__': 'TerminalDef'}, 21: {'name': 'CPP_COMMENT', 'pattern': {'value': '\\/\\/[^\n]*', 'flags': [], 'raw': '/\\/\\/[^\\n]*/', '_width': [2, 18446744073709551616], '__type__': 'PatternRE'}, 'priority': 0, '__type__': 'TerminalDef'}, 22: {'name': 'VOID_T', 'pattern': {'value': 'void', 'flags': [], 'raw': '"void"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 23: {'name': 'INT_T', 'pattern': {'value': 'int', 'flags': [], 'raw': '"int"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 24: {'name': 'FLOAT_T', 'pattern': {'value': 'float', 'flags': [], 'raw': '"float"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 25: {'name': 'COMMA', 'pattern': {'value': ',', 'flags': [], 'raw': '","', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 26: {'name': 'CONST', 'pattern': {'value': 'const', 'flags': [], 'raw': '"const"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 27: {'name': 'SEMICOLON', 'pattern': {'value': ';', 'flags': [], 'raw': '";"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 28: {'name': 'EQUAL', 'pattern': {'value': '=', 'flags': [], 'raw': '"="', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 29: {'name': 'LBRACE', 'pattern': {'value': '{', 'flags': [], 'raw': '"{"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 30: {'name': 'RBRACE', 'pattern': {'value': '}', 'flags': [], 'raw': '"}"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 31: {'name': 'LPAR', 'pattern': {'value': '(', 'flags': [], 'raw': '"("', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 32: {'name': 'RPAR', 'pattern': {'value': ')', 'flags': [], 'raw': '")"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 33: {'name': 'ELSE', 'pattern': {'value': 'else', 'flags': [], 'raw': '"else"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 34: {'name': 'IF', 'pattern': {'value': 'if', 'flags': [], 'raw': '"if"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 35: {'name': 'WHILE', 'pattern': {'value': 'while', 'flags': [], 'raw': '"while"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 36: {'name': 'BREAK', 'pattern': {'value': 'break', 'flags': [], 'raw': '"break"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 37: {'name': 'CONTINUE', 'pattern': {'value': 'continue', 'flags': [], 'raw': '"continue"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 38: {'name': 'RETURN', 'pattern': {'value': 'return', 'flags': [], 'raw': '"return"', '__type__': 'PatternStr'}, 'priority': 0, '__type__': 'TerminalDef'}, 39: {'origin': {'name': Token('RULE', 'start'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'comp_unit', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 40: {'origin': {'name': Token('RULE', 'comp_unit'), '__type__': 'NonTerminal'}, 'expansion': [{'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 41: {'origin': {'name': Token('RULE', 'const_decl'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'CONST', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'const_def', '__type__': 'NonTerminal'}, {'name': '__const_decl_star_1', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 42: {'origin': {'name': Token('RULE', 'const_decl'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'CONST', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'const_def', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 43: {'origin': {'name': Token('RULE', 'btype'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'INT_T', 'filter_out': False, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 44: {'origin': {'name': Token('RULE', 'btype'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'FLOAT_T', 'filter_out': False, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 45: {'origin': {'name': Token('RULE', 'const_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'INT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'const_init_val', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 46: {'origin': {'name': Token('RULE', 'const_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'const_init_val', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 47: {'origin': {'name': Token('RULE', 'const_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'const_init_val', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 48: {'origin': {'name': Token('RULE', 'const_init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'signed_number', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 49: {'origin': {'name': Token('RULE', 'const_init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 50: {'origin': {'name': Token('RULE', 'const_init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'signed_number', '__type__': 'NonTerminal'}, {'name': '__const_init_val_star_2', '__type__': 'NonTerminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 51: {'origin': {'name': Token('RULE', 'const_init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'signed_number', '__type__': 'NonTerminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 52: {'origin': {'name': Token('RULE', 'signed_number'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'PLUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'number', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 53: {'origin': {'name': Token('RULE', 'signed_number'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'MINUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'number', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 54: {'origin': {'name': Token('RULE', 'signed_number'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'number', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 55: {'origin': {'name': Token('RULE', 'var_decl'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'var_def', '__type__': 'NonTerminal'}, {'name': '__var_decl_star_3', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 56: {'origin': {'name': Token('RULE', 'var_decl'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'var_def', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 57: {'origin': {'name': Token('RULE', 'var_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'INT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'init_val', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 58: {'origin': {'name': Token('RULE', 'var_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'INT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 59: {'origin': {'name': Token('RULE', 'var_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'init_val', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 60: {'origin': {'name': Token('RULE', 'var_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 61: {'origin': {'name': Token('RULE', 'var_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'init_val', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 62: {'origin': {'name': Token('RULE', 'var_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 63: {'origin': {'name': Token('RULE', 'init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 64: {'origin': {'name': Token('RULE', 'init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 65: {'origin': {'name': Token('RULE', 'init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': '__init_val_star_4', '__type__': 'NonTerminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 66: {'origin': {'name': Token('RULE', 'init_val'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 67: {'origin': {'name': Token('RULE', 'func_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'func_fparam', '__type__': 'NonTerminal'}, {'name': '__func_def_star_5', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'block', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 68: {'origin': {'name': Token('RULE', 'func_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'func_fparam', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'block', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 69: {'origin': {'name': Token('RULE', 'func_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'block', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 70: {'origin': {'name': Token('RULE', 'func_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'VOID_T', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'func_fparam', '__type__': 'NonTerminal'}, {'name': '__func_def_star_5', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'block', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 71: {'origin': {'name': Token('RULE', 'func_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'VOID_T', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'func_fparam', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'block', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 72: {'origin': {'name': Token('RULE', 'func_def'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'VOID_T', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'block', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 73: {'origin': {'name': Token('RULE', 'func_fparam'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'RBRACKET', 'filter_out': False, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 74: {'origin': {'name': Token('RULE', 'func_fparam'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'btype', '__type__': 'NonTerminal'}, {'name': 'ident', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 75: {'origin': {'name': Token('RULE', 'block'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': '__block_star_6', '__type__': 'NonTerminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 76: {'origin': {'name': Token('RULE', 'block'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LBRACE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'RBRACE', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 77: {'origin': {'name': Token('RULE', 'block_item'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'const_decl', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 78: {'origin': {'name': Token('RULE', 'block_item'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'var_decl', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 79: {'origin': {'name': Token('RULE', 'block_item'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'stmt', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 80: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'assign_stmt', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 81: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'empty_stmt', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 82: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'exp_stmt', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 83: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'block', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 84: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'if_stmt', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 85: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'while_stmt', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 86: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'break_stmt', '__type__': 'NonTerminal'}], 'order': 6, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 87: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'continue_stmt', '__type__': 'NonTerminal'}], 'order': 7, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 88: {'origin': {'name': Token('RULE', 'stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'return_stmt', '__type__': 'NonTerminal'}], 'order': 8, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 89: {'origin': {'name': Token('RULE', 'assign_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'lval', '__type__': 'NonTerminal'}, {'name': 'EQUAL', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 90: {'origin': {'name': Token('RULE', 'empty_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 91: {'origin': {'name': Token('RULE', 'exp_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 92: {'origin': {'name': Token('RULE', 'if_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'IF', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'cond', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'stmt', '__type__': 'NonTerminal'}, {'name': 'ELSE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'stmt', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 93: {'origin': {'name': Token('RULE', 'if_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'IF', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'cond', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'stmt', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 94: {'origin': {'name': Token('RULE', 'while_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'WHILE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'cond', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'stmt', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 95: {'origin': {'name': Token('RULE', 'break_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'BREAK', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 96: {'origin': {'name': Token('RULE', 'continue_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'CONTINUE', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 97: {'origin': {'name': Token('RULE', 'return_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'RETURN', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 98: {'origin': {'name': Token('RULE', 'return_stmt'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'RETURN', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'SEMICOLON', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 99: {'origin': {'name': Token('RULE', 'exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 100: {'origin': {'name': Token('RULE', 'cond'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'lor_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 101: {'origin': {'name': Token('RULE', 'lor_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'land_exp', '__type__': 'NonTerminal'}, {'name': '__lor_exp_star_7', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 102: {'origin': {'name': Token('RULE', 'lor_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'land_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 103: {'origin': {'name': Token('RULE', 'land_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'eq_exp', '__type__': 'NonTerminal'}, {'name': '__land_exp_star_8', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 104: {'origin': {'name': Token('RULE', 'land_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'eq_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 105: {'origin': {'name': Token('RULE', 'eq_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'rel_exp', '__type__': 'NonTerminal'}, {'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 106: {'origin': {'name': Token('RULE', 'eq_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'rel_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 107: {'origin': {'name': Token('RULE', 'rel_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'add_exp', '__type__': 'NonTerminal'}, {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 108: {'origin': {'name': Token('RULE', 'rel_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 109: {'origin': {'name': Token('RULE', 'add_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'mul_exp', '__type__': 'NonTerminal'}, {'name': '__add_exp_star_11', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 110: {'origin': {'name': Token('RULE', 'add_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'mul_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 111: {'origin': {'name': Token('RULE', 'mul_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'unary_exp', '__type__': 'NonTerminal'}, {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 112: {'origin': {'name': Token('RULE', 'mul_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 113: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 114: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'lval', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 115: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'number', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 116: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'func_call', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 117: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'PLUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 118: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'MINUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 119: {'origin': {'name': Token('RULE', 'unary_exp'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'NOT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 6, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 120: {'origin': {'name': Token('RULE', 'func_call'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': '__init_val_star_4', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 121: {'origin': {'name': Token('RULE', 'func_call'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 122: {'origin': {'name': Token('RULE', 'func_call'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LPAR', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'RPAR', 'filter_out': True, '__type__': 'Terminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 123: {'origin': {'name': Token('RULE', 'lval'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}, {'name': 'LBRACKET', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}, {'name': 'RBRACKET', 'filter_out': True, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 124: {'origin': {'name': Token('RULE', 'lval'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'ident', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 125: {'origin': {'name': Token('RULE', 'number'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'INT', 'filter_out': False, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 126: {'origin': {'name': Token('RULE', 'number'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'FLOAT', 'filter_out': False, '__type__': 'Terminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 127: {'origin': {'name': Token('RULE', 'ident'), '__type__': 'NonTerminal'}, 'expansion': [{'name': 'NAME', 'filter_out': False, '__type__': 'Terminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 128: {'origin': {'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'const_decl', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 129: {'origin': {'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'var_decl', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 130: {'origin': {'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'func_def', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 131: {'origin': {'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, {'name': 'const_decl', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 132: {'origin': {'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, {'name': 'var_decl', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 133: {'origin': {'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__comp_unit_plus_0', '__type__': 'NonTerminal'}, {'name': 'func_def', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 134: {'origin': {'name': '__const_decl_star_1', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'const_def', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 135: {'origin': {'name': '__const_decl_star_1', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__const_decl_star_1', '__type__': 'NonTerminal'}, {'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'const_def', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 136: {'origin': {'name': '__const_init_val_star_2', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'signed_number', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 137: {'origin': {'name': '__const_init_val_star_2', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__const_init_val_star_2', '__type__': 'NonTerminal'}, {'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'signed_number', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 138: {'origin': {'name': '__var_decl_star_3', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'var_def', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 139: {'origin': {'name': '__var_decl_star_3', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__var_decl_star_3', '__type__': 'NonTerminal'}, {'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'var_def', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 140: {'origin': {'name': '__init_val_star_4', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 141: {'origin': {'name': '__init_val_star_4', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__init_val_star_4', '__type__': 'NonTerminal'}, {'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 142: {'origin': {'name': '__func_def_star_5', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'func_fparam', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 143: {'origin': {'name': '__func_def_star_5', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__func_def_star_5', '__type__': 'NonTerminal'}, {'name': 'COMMA', 'filter_out': True, '__type__': 'Terminal'}, {'name': 'func_fparam', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 144: {'origin': {'name': '__block_star_6', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'block_item', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 145: {'origin': {'name': '__block_star_6', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__block_star_6', '__type__': 'NonTerminal'}, {'name': 'block_item', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 146: {'origin': {'name': '__lor_exp_star_7', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LOR', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'land_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 147: {'origin': {'name': '__lor_exp_star_7', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__lor_exp_star_7', '__type__': 'NonTerminal'}, {'name': 'LOR', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'land_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 148: {'origin': {'name': '__land_exp_star_8', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LAND', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'eq_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 149: {'origin': {'name': '__land_exp_star_8', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__land_exp_star_8', '__type__': 'NonTerminal'}, {'name': 'LAND', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'eq_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 150: {'origin': {'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'EQ', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'rel_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 151: {'origin': {'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'NEQ', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'rel_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 152: {'origin': {'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}, {'name': 'EQ', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'rel_exp', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 153: {'origin': {'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__eq_exp_star_9', '__type__': 'NonTerminal'}, {'name': 'NEQ', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'rel_exp', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 154: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 155: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'GT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 156: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'LTE', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 157: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'GTE', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 158: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, {'name': 'LT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 159: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, {'name': 'GT', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 160: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, {'name': 'LTE', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 6, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 161: {'origin': {'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__rel_exp_star_10', '__type__': 'NonTerminal'}, {'name': 'GTE', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'add_exp', '__type__': 'NonTerminal'}], 'order': 7, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 162: {'origin': {'name': '__add_exp_star_11', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'PLUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'mul_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 163: {'origin': {'name': '__add_exp_star_11', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'MINUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'mul_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 164: {'origin': {'name': '__add_exp_star_11', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__add_exp_star_11', '__type__': 'NonTerminal'}, {'name': 'PLUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'mul_exp', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 165: {'origin': {'name': '__add_exp_star_11', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__add_exp_star_11', '__type__': 'NonTerminal'}, {'name': 'MINUS', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'mul_exp', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 166: {'origin': {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'MUL', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 0, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 167: {'origin': {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'DIV', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 1, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 168: {'origin': {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, 'expansion': [{'name': 'MOD', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 2, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 169: {'origin': {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, {'name': 'MUL', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 3, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 170: {'origin': {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, {'name': 'DIV', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 4, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}, 171: {'origin': {'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, 'expansion': [{'name': '__mul_exp_star_12', '__type__': 'NonTerminal'}, {'name': 'MOD', 'filter_out': False, '__type__': 'Terminal'}, {'name': 'unary_exp', '__type__': 'NonTerminal'}], 'order': 5, 'alias': None, 'options': {'keep_all_tokens': False, 'expand1': False, 'priority': None, 'template_source': None, 'empty_indices': (), '__type__': 'RuleOptions'}, '__type__': 'Rule'}}
+)
 Shift = 0
 Reduce = 1
-
-
 def Lark_StandAlone(**kwargs):
-    return Lark._load_from_dict(DATA, MEMO, **kwargs)
+  return Lark._load_from_dict(DATA, MEMO, **kwargs)

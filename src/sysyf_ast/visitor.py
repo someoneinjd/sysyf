@@ -4,7 +4,6 @@ from .ast import (
     Assembly,
     AssignStmt,
     BinaryExpr,
-    BinaryOp,
     BlockStmt,
     BreakStmt,
     ContinueStmt,
@@ -16,13 +15,11 @@ from .ast import (
     FuncParam,
     GlobalDef,
     IfStmt,
-    Literal,
     LVal,
     ReturnStmt,
     Stmt,
     Type,
     UnaryExpr,
-    UnaryOp,
     VarDefStmt,
     WhileStmt,
 )
@@ -39,9 +36,6 @@ class ASTVisitor:
         pass
 
     def visit_BinaryExpr(self, node: BinaryExpr) -> Any:
-        pass
-
-    def visit_BinaryOp(self, node: BinaryOp) -> Any:
         pass
 
     def visit_BlockStmt(self, node: BlockStmt) -> Any:
@@ -66,10 +60,18 @@ class ASTVisitor:
                 return self.visit_LVal(node)
             case FuncCallExpr(_):
                 return self.visit_FuncCallExpr(node)
-            case Literal(_):
-                return self.visit_Literal(node)
+            case int(_):
+                return self.visit_Int(node)
+            case float(_):
+                return self.visit_Float(node)
 
     def visit_ExpStmt(self, node: ExpStmt) -> Any:
+        pass
+
+    def visit_Int(self, node: int) -> Any:
+        pass
+
+    def visit_Float(self, node: float) -> Any:
         pass
 
     def visit_FuncCallExpr(self, node: FuncCallExpr) -> Any:
@@ -92,9 +94,6 @@ class ASTVisitor:
         pass
 
     def visit_LVal(self, node: LVal) -> Any:
-        pass
-
-    def visit_Literal(self, node: Literal) -> Any:
         pass
 
     def visit_ReturnStmt(self, node: ReturnStmt) -> Any:
@@ -127,9 +126,6 @@ class ASTVisitor:
         pass
 
     def visit_UnaryExpr(self, node: UnaryExpr) -> Any:
-        pass
-
-    def visit_UnaryOp(self, node: UnaryOp) -> Any:
         pass
 
     def visit_VarDefStmt(self, node: VarDefStmt) -> Any:

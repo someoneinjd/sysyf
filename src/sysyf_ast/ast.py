@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import Optional, TypeAlias
 
 
 class BinaryOp(Enum):
@@ -53,20 +53,15 @@ class LVal:
 @dataclass
 class FuncCallExpr:
     func_name: str
-    params: List["Expr"]
+    params: list["Expr"]
 
 
-@dataclass
-class Literal:
-    val: int | float
-
-
-Expr = BinaryExpr | UnaryExpr | LVal | FuncCallExpr | Literal
+Expr: TypeAlias = BinaryExpr | UnaryExpr | LVal | FuncCallExpr | int | float
 
 
 @dataclass
 class ReturnStmt:
-    ret: Optional[Expr]
+    ret: Expr | None
 
 
 @dataclass
@@ -113,12 +108,12 @@ class VarDefStmt:
     is_const: bool
     type: Type
     name: str
-    array_length: Literal | None
-    init_vals: List[Expr] | None
+    array_length: int | None
+    init_vals: list[Expr] | None
 
 
-BlockStmt = List["Stmt"]
-Stmt = (
+BlockStmt: TypeAlias = list["Stmt"]
+Stmt: TypeAlias = (
     ReturnStmt
     | BreakStmt
     | ContinueStmt
@@ -143,10 +138,10 @@ class FuncParam:
 class FuncDef:
     ret_type: Type
     name: str
-    params: List[FuncParam]
+    params: list[FuncParam]
     body: BlockStmt
 
 
-GlobalDef = FuncDef | VarDefStmt
+GlobalDef: TypeAlias = FuncDef | VarDefStmt
 
-Assembly = List[GlobalDef]
+Assembly: TypeAlias = list[GlobalDef]

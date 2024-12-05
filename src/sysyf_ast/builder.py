@@ -15,7 +15,6 @@ from .ast import (
     FuncDef,
     FuncParam,
     IfStmt,
-    Literal,
     LVal,
     ReturnStmt,
     Type,
@@ -104,9 +103,6 @@ class ASTBuilder(Transformer):
             case [param_type, param_name, "[", "]"]:
                 return FuncParam(param_name, param_type, True)
 
-    def func_rparam(self, ops: list):
-        return ops[0]
-
     def break_stmt(self, _: list):
         return BreakStmt()
 
@@ -128,7 +124,7 @@ class ASTBuilder(Transformer):
             case [name, init_vals]:
                 return VarDefStmt(True, Type.INT, name, None, init_vals)
             case [name, "[", "]", init_vals]:
-                return VarDefStmt(True, Type.INT, name, Literal(len(init_vals)), init_vals)
+                return VarDefStmt(True, Type.INT, name, len(init_vals), init_vals)
             case [name, "[", length, "]", init_vals]:
                 return VarDefStmt(True, Type.INT, name, length, init_vals)
 
@@ -142,7 +138,7 @@ class ASTBuilder(Transformer):
             case ["+", literal]:
                 return literal
             case ["-", literal]:
-                return Literal(-literal.val)
+                return -literal
 
     def var_decl(self, ops: list):
         for var_def in ops[1:]:
@@ -154,13 +150,13 @@ class ASTBuilder(Transformer):
             case [name]:
                 return VarDefStmt(False, Type.INT, name, None, None)
             case [name, "[", "]"]:
-                return VarDefStmt(False, Type.INT, name, Literal(0), None)
+                return VarDefStmt(False, Type.INT, name, 0, None)
             case [name, "[", length, "]"]:
                 return VarDefStmt(False, Type.INT, name, length, None)
             case [name, vals]:
                 return VarDefStmt(False, Type.INT, name, None, vals)
             case [name, "[", "]", vals]:
-                return VarDefStmt(False, Type.INT, name, Literal(len(vals)), vals)
+                return VarDefStmt(False, Type.INT, name, len(vals), vals)
             case [name, "[", length, "]", vals]:
                 return VarDefStmt(False, Type.INT, name, length, vals)
 
@@ -272,10 +268,10 @@ class ASTBuilder(Transformer):
 
     def INT(self, int_literal: str):
         if int_literal.startswith(("0x", "0X")):
-            return Literal(int(int_literal, 16))
+            return int(int_literal, 16)
         elif int_literal.startswith("0"):
-            return Literal(int(int_literal, 8))
-        return Literal(int(int_literal))
+            return int(int_literal, 8)
+        return int(int_literal)
 
     def FLOAT(self, fp_literal: str):
-        return Literal(float(fp_literal))
+        return float(fp_literal)

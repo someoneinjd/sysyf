@@ -30,8 +30,7 @@ rel_exp: add_exp ((LT | GT | LTE | GTE) add_exp)*
 add_exp: mul_exp ((PLUS | MINUS) mul_exp)*
 mul_exp: unary_exp ((MUL | DIV | MOD) unary_exp)*
 unary_exp: "(" exp ")" | lval | number | func_call | ((PLUS | MINUS | NOT) unary_exp)
-func_call: ident "(" (func_rparam ("," func_rparam)*)? ")"
-func_rparam: exp
+func_call: ident "(" (exp ("," exp)*)? ")"
 lval: ident ("[" exp "]")? 
 number: INT | FLOAT
 PLUS: "+"
