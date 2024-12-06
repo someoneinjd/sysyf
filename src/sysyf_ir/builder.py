@@ -140,14 +140,16 @@ class IRBuilder(ASTVisitor):
             global_var = ir.GlobalVariable(self._module, typ, node.name)
             if node.init_vals is not None:
                 assert all_literals(node.init_vals), f"Global vars can only be initialized by literals: {node.name}"
-                if node.array_length is not None:
+                if node.array_length is not None and len(node.init_vals) != 0:
                     init_val = [elem_typ(int(i) if elem_typ != FLOAT else float(i)) for i in node.init_vals]
                     for _ in range(len(node.init_vals), node.array_length):
                         init_val.append(elem_typ(0))
+                elif node.array_length is not None:
+                    init_val = None
                 else:
                     init_val = int(node.init_vals[0]) if typ != FLOAT else float(node.init_vals[0])
             else:
-                init_val = [elem_typ(0) for _ in range(node.array_length)] if node.array_length is not None else 0
+                init_val = None
             global_var.initializer = typ(init_val)
             global_var.global_constant = node.is_const
             self.push_var(node.name, global_var)
