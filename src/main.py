@@ -21,6 +21,7 @@ def run_compiler(source_file: str, output_file: str, emit_ir: bool, emit_ast: bo
         with open(output_file, "w") as fp:
             fp.write(ir_code)
 
+
 def main():
     parser = argparse.ArgumentParser(description="SysYF IR Compiler")
     parser.add_argument("-emit-ir", action="store_true", help="Generate LLVM IR and print it")

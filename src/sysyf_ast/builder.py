@@ -131,15 +131,6 @@ class ASTBuilder(Transformer):
     def const_init_val(self, ops: list):
         return ops
 
-    def signed_number(self, ops: list):
-        match ops:
-            case [literal]:
-                return literal
-            case ["+", literal]:
-                return literal
-            case ["-", literal]:
-                return -literal
-
     def var_decl(self, ops: list):
         for var_def in ops[1:]:
             var_def.type = ops[0]
@@ -267,9 +258,9 @@ class ASTBuilder(Transformer):
         return Type.FLOAT
 
     def INT(self, int_literal: str):
-        if int_literal.startswith(("0x", "0X")):
+        if int_literal.startswith(("0x", "0X", "-0x", "-0X", "+0x", "+0X")):
             return int(int_literal, 16)
-        elif int_literal.startswith("0"):
+        elif int_literal.startswith(("0", "-0", "+0")):
             return int(int_literal, 8)
         return int(int_literal)
 

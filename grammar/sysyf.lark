@@ -3,8 +3,7 @@ comp_unit: (const_decl | var_decl | func_def)+
 const_decl: "const" btype const_def ("," const_def)* ";"
 btype: INT_T | FLOAT_T
 const_def: ident (LBRACKET INT? RBRACKET)? "=" const_init_val
-const_init_val: signed_number | "{" "}" | "{" signed_number ("," signed_number)* "}" 
-signed_number: (PLUS | MINUS)? number
+const_init_val: number | "{" "}" | "{" number ("," number)* "}"
 var_decl: btype var_def ("," var_def)* ";"
 var_def: ident (LBRACKET INT? RBRACKET)? ("=" init_val)?
 init_val: exp | "{" "}" | "{" exp ("," exp)* "}" 
@@ -54,8 +53,8 @@ DIGIT: "0".."9"
 NONZERO: "1".."9"
 OCTDIGIT: "0".."7"
 HEXDIGIT: "a".."f"|"A".."F"|DIGIT
-INT: NONZERO DIGIT* | "0" OCTDIGIT* | ("0x" | "0X") HEXDIGIT+
-FLOAT: INT "." INT
+INT: (PLUS | MINUS)? (NONZERO DIGIT* | "0" OCTDIGIT* | ("0x" | "0X") HEXDIGIT+)
+FLOAT: (PLUS | MINUS)? (INT "." INT)
 LCASE_LETTER: "a".."z"
 UCASE_LETTER: "A".."Z"
 LETTER: UCASE_LETTER | LCASE_LETTER
