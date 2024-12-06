@@ -58,6 +58,7 @@ class IRBuilder(ASTVisitor):
                 ir.FunctionType(VOID, [INT, ir.PointerType(INT)]),
                 "put_int_array",
             ),
+            "memset": self._module.declare_intrinsic("llvm.memset", (ir.PointerType(ir.IntType(8)), ir.IntType(64))),
         }
 
     def unify_type(self, lhs: Any, rhs: Any) -> tuple[ir.Value, ir.Value, bool]:
@@ -163,9 +164,11 @@ class IRBuilder(ASTVisitor):
                         val = self.visit_Expr(i)
                         self._builder.store(self.cast(val, elem_typ), array_begin)
                         array_begin = self._builder.gep(array_begin, [INT(1)], True)
-                    for _ in range(len(node.init_vals), node.array_length):
-                        self._builder.store(elem_typ(0), array_begin)
-                        array_begin = self._builder.gep(array_begin, [INT(1)], True)
+                    if len(node.init_vals) < node.array_length:
+                        bytes_num = ir.IntType(64)((node.array_length - len(node.init_vals)) * 4)
+                        bytes_begin = self._builder.bitcast(array_begin, ir.PointerType(ir.IntType(8)))
+                        memset = self.find_func("memset")
+                        self._builder.call(memset, (bytes_begin, ir.IntType(8)(0), bytes_num, BOOL(0)))
                 else:
                     self._builder.store(self.cast(self.visit_Expr(node.init_vals[0]), typ), local_var)
 
