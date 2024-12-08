@@ -105,14 +105,9 @@ class IRBuilder(ASTVisitor):
         for i in self._var_sym_table[::-1]:
             if name in i:
                 return i[name]
-            else:
-                continue
 
     def find_func(self, name: str) -> ir.Function | None:
-        if name in self._func_sym_table:
-            return self._func_sym_table[name]
-        else:
-            return None
+        return self._func_sym_table.get(name)
 
     def visit_Assembly(self, node: Assembly):
         for def_ in node:
@@ -278,7 +273,9 @@ class IRBuilder(ASTVisitor):
     def visit_Float(self, node: float):
         return FLOAT(node)
 
-    def visit_LVal(self, node: LVal, require_address=False) -> ir.GEPInstr | ir.LoadInstr | ir.AllocaInstr | ir.GlobalVariable:
+    def visit_LVal(
+        self, node: LVal, require_address=False
+    ) -> ir.GEPInstr | ir.LoadInstr | ir.AllocaInstr | ir.GlobalVariable:
         ptr = self.find_var(node.name)
         if ptr is None:
             raise NameError(f"variable {node.name} not found in current scope")
@@ -288,8 +285,6 @@ class IRBuilder(ASTVisitor):
                 ptr = self._builder.gep(self._builder.load(ptr), [index], True)
             else:
                 ptr = self._builder.gep(ptr, [INT(0), index], True)
-        elif ptr.type.pointee.is_pointer:
-            ptr = self._builder.load(ptr)
         return ptr if require_address else self._builder.load(ptr)
 
     def visit_BinaryExpr(self, node: BinaryExpr) -> Any:  # ir.Value:
@@ -366,7 +361,7 @@ class IRBuilder(ASTVisitor):
                 if isinstance(ptr.type.pointee, ir.ArrayType):
                     call_param.append(self._builder.gep(ptr, [INT(0), INT(0)]))
                 else:
-                    call_param.append(ptr)
+                    call_param.append(self._builder.load(ptr))
             else:
                 call_param.append(self.cast(self.visit_Expr(rparam), fparam.type))
         return self._builder.call(func, call_param)
