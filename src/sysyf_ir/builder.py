@@ -103,15 +103,15 @@ class IRBuilder(ASTVisitor):
 
     def find_var(self, name: str) -> ir.AllocaInstr | ir.GlobalVariable | None:
         for i in self._var_sym_table[::-1]:
-            try:
+            if name in i:
                 return i[name]
-            except KeyError:
+            else:
                 continue
 
     def find_func(self, name: str) -> ir.Function | None:
-        try:
+        if name in self._func_sym_table:
             return self._func_sym_table[name]
-        except KeyError:
+        else:
             return None
 
     def visit_Assembly(self, node: Assembly):
@@ -278,7 +278,7 @@ class IRBuilder(ASTVisitor):
     def visit_Float(self, node: float):
         return FLOAT(node)
 
-    def visit_LVal(self, node: LVal, require_address=False) -> Any:
+    def visit_LVal(self, node: LVal, require_address=False) -> ir.GEPInstr | ir.LoadInstr | ir.AllocaInstr | ir.GlobalVariable:
         ptr = self.find_var(node.name)
         if ptr is None:
             raise NameError(f"variable {node.name} not found in current scope")
