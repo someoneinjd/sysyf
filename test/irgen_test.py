@@ -2,8 +2,6 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
-from typing import List, Tuple
 
 import pytest
 
@@ -39,7 +37,7 @@ class SYCase:
     def out_path(self) -> str:
         return self._path_under_dir(self._name+".out")
 
-def find_test_cases() -> List[Tuple[str, str]]:
+def find_test_cases() -> list[tuple[str, str]]:
     result = []
     for dir, mode in [(os.path.join(CWD, mode), mode) for mode in ["Easy", "Medium", "Hard"]]:
         names = sorted(list(
@@ -96,4 +94,4 @@ def test_compiler(mode, case_name, tmp_path, caplog):
     generate_ir(test_case, ll_path)
     generate_bin(ll_path, bin_path)
     exec_bin(test_case, bin_path)
-    
+
