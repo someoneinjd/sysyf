@@ -24,8 +24,8 @@ def run_compiler(source_file: str, output_file: str, emit_ir: bool, emit_ast: bo
 
 def main():
     parser = argparse.ArgumentParser(description="SysYF IR Compiler")
-    parser.add_argument("-emit-ir", action="store_true", help="Generate LLVM IR and print it")
-    parser.add_argument("-emit-ast", action="store_true", help="Print source code recovered from AST")
+    parser.add_argument("--emit-ir", action="store_true", help="Generate LLVM IR and print it")
+    parser.add_argument("--emit-ast", action="store_true", help="Print source code recovered from AST")
     parser.add_argument("-o", type=str, dest="output_file", help="Output file name", default="testcase.ll")
     parser.add_argument("input", type=str, help="Input source file", default="testcase.sy")
     args = parser.parse_args()

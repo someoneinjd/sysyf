@@ -1,0 +1,11 @@
+Checks: >
+  -*,
+  clang-analyzer-*,
+  clang-diagnostic-*,
+  llvm-*,
+  misc-*,
+  -misc-unused-parameters,
+  -misc-non-private-member-variables-in-classes,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,

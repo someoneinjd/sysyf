@@ -32,7 +32,7 @@ def task3_eval(
         input_path = test_path + ".in"
         output_path = test_path + ".out"
 
-        result = run_command(f"{exe_path} -emit-ir -o {ll_path} {sy_path}")
+        result = run_command(f"{exe_path} --emit-ir -o {ll_path} {sy_path}")
         if result.returncode == 0:
             input_option = None
             if need_input:
@@ -79,6 +79,7 @@ def task3_eval(
 
 def main():
     parser = argparse.ArgumentParser(description="Test script")
+    parser.add_argument("language", type=str, help="language", choices=["cpp", "python"])
     parser.add_argument("mode", type=str, help="Test Mode", choices=["Easy", "Medium", "Hard"])
 
     args = parser.parse_args()
@@ -89,7 +90,9 @@ def main():
     items = [i.split(".")[0] for i in os.listdir(test_dir)]
     items.sort()
     test_cases = {k: os.path.isfile(os.path.join(test_dir, f"{k}.in")) for k in items}
-    task3_eval("./src/main.py", test_dir, test_cases, timeout)
+    task3_eval(
+        "./python/src/main.py" if args.language == "python" else "./cpp/build/compiler", test_dir, test_cases, timeout
+    )
 
 
 if __name__ == "__main__":

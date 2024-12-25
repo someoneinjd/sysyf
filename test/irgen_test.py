@@ -54,7 +54,7 @@ def run_command_in_shell(cmd: str, input: None | str=None):
     
 def generate_ir(test_case: SYCase, ll_path: str):
     logging.info("Generate IR...")
-    compile_cmd = f"{sys.executable} {Compiler} -emit-ir -o {ll_path} {test_case.sy_path}"
+    compile_cmd = f"{sys.executable} {Compiler} --emit-ir -o {ll_path} {test_case.sy_path}"
     compile_proc = run_command_in_shell(compile_cmd)
     if compile_proc.returncode != 0:
         logging.error(' '.join(["Generate IR error:", compile_cmd, compile_proc.stdout, compile_proc.stderr]))
