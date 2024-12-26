@@ -130,7 +130,6 @@ RefPtr<Value> IRBuilder::visit(RefPtr<const ast::LVal> expr, bool require_addres
 }
 
 RefPtr<Value> IRBuilder::visit(RefPtr<const ast::FuncCallExpr> expr) {
-    std::cerr << *expr << std::endl;
     auto *func = find_func(expr->func_name);
     Vec<RefPtr<Value>> call_params{};
     call_params.reserve(expr->params.size());
@@ -139,7 +138,6 @@ RefPtr<Value> IRBuilder::visit(RefPtr<const ast::FuncCallExpr> expr) {
         auto &fparam = func->args()[i];
         auto &rparam = expr->params[i];
         if (fparam.type().is<PointerType>()) {
-            std::cerr << "arg " << i << " type = " << fparam.type() << std::endl;
             auto *ptr = visit(rparam->as<ast::LVal>(), true);
             if (ptr->type().as<PointerType>()->pointee->is<ArrayType>())
                 call_params.push_back(builder_.gep(ptr, {builder_.const_(0), builder_.const_(0)}));
