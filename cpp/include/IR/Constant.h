@@ -23,6 +23,7 @@ class Constant : public Value {
     RefPtr<Module> parent() const { return parent_; }
     virtual ~Constant() = default;
     static bool classof(const Value *v) { return v->type_id() == TypeID::Constant; }
+    friend Module;
 
   private:
     RefPtr<Module> parent_;
@@ -35,6 +36,7 @@ class ConstantInt : public Constant {
     int value() const { return value_; }
     static RefPtr<ConstantInt> new_(RefPtr<Module> p, int value);
     static bool classof(const Value *v) { return v->type_id() == TypeID::Constant && v->type().is<IntType>(); }
+    friend Module;
 
   private:
     int value_;
@@ -54,6 +56,7 @@ class ConstantFP : public Constant {
     float value() const { return value_; }
     static RefPtr<ConstantFP> new_(RefPtr<Module> p, float value);
     static bool classof(const Value *v) { return v->type_id() == TypeID::Constant && v->type().is<FloatType>(); }
+    friend Module;
 
   private:
     float value_;
@@ -68,6 +71,7 @@ class ConstantArray : public Constant {
     const auto &value() const { return value_; }
     static RefPtr<ConstantArray> new_(RefPtr<Module> p, Vec<RefPtr<Constant>> value);
     static bool classof(const Value *v) { return v->type_id() == TypeID::Constant && v->type().is<ArrayType>(); }
+    friend Module;
 
   private:
     Vec<RefPtr<Constant>> value_;

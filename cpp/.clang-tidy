@@ -9,3 +9,4 @@ Checks: >
   cppcoreguidelines-*,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -cppcoreguidelines-pro-type-static-cast-downcast
