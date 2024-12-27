@@ -20,82 +20,66 @@ struct UnaryExpr;
 struct LVal;
 struct FuncCallExpr;
 
-using Expr = Union<int, float, BinaryExpr, UnaryExpr, LVal, FuncCallExpr>;
+using Expr = Union<int, float, Box<BinaryExpr>, Box<UnaryExpr>, Box<LVal>, Box<FuncCallExpr>>;
 
 struct BinaryExpr {
     BinaryOp op;
-    Box<Expr> lhs, rhs;
+    Expr lhs, rhs;
 };
 
 struct UnaryExpr {
     UnaryOp op;
-    Box<Expr> expr;
+    Expr expr;
 };
 
 struct LVal {
     std::string name;
-    Opt<Box<Expr>> array_idx;
+    Opt<Expr> array_idx;
 };
 
 struct FuncCallExpr {
     std::string func_name;
-    Vec<Box<Expr>> params;
+    Vec<Expr> params;
 };
-
-struct AssignStmt;
-struct ExprStmt;
-struct EmptyStmt;
-struct VarDefStmt;
-struct IfStmt;
-struct WhileStmt;
-struct BreakStmt;
-struct ContinueStmt;
-struct ReturnStmt;
-struct BlockStmt;
-
-using Stmt = Union<AssignStmt, ExprStmt, EmptyStmt, VarDefStmt, IfStmt, WhileStmt, BreakStmt, ContinueStmt, ReturnStmt,
-                   BlockStmt>;
 
 struct AssignStmt {
-    Box<LVal> var;
-    Box<Expr> val;
+    LVal var;
+    Expr val;
 };
-
 struct ExprStmt {
-    Box<Expr> expr;
+    Expr expr;
 };
 
 struct EmptyStmt {};
-
 struct VarDefStmt {
     bool is_const;
     Type type;
     std::string name;
     Opt<int> array_idx;
-    Opt<Vec<Box<Expr>>> init_vals;
+    Opt<Vec<Expr>> init_vals;
+};
+struct BreakStmt {};
+struct ContinueStmt {};
+struct ReturnStmt {
+    Opt<Expr> ret_val;
 };
 
+using Stmt = Union<AssignStmt, ExprStmt, EmptyStmt, VarDefStmt, Box<struct IfStmt>, Box<struct WhileStmt>, BreakStmt,
+                   ContinueStmt, ReturnStmt, Box<struct BlockStmt>>;
+
 struct IfStmt {
-    Box<Expr> cond;
-    Box<Stmt> if_body;
-    Opt<Box<Stmt>> else_body;
+    Expr cond;
+    Stmt if_body;
+    Opt<Stmt> else_body;
 };
 
 struct WhileStmt {
-    Box<Expr> cond;
-    Box<Stmt> while_body;
-};
-
-struct BreakStmt {};
-
-struct ContinueStmt {};
-
-struct ReturnStmt {
-    Opt<Box<Expr>> ret_val;
+    Expr cond;
+    Stmt while_body;
 };
 
 struct BlockStmt {
-    Vec<Box<Stmt>> stmts;
+    Vec<Stmt> stmts;
 };
 
 struct FuncParam {
@@ -107,8 +91,8 @@ struct FuncParam {
 struct FuncDef {
     Type ret_type;
     std::string name;
-    Vec<Box<FuncParam>> params;
-    Box<BlockStmt> body;
+    Vec<FuncParam> params;
+    BlockStmt body;
 };
 
 using GlobalDef = Union<VarDefStmt, FuncDef>;

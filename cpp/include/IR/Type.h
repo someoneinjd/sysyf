@@ -11,13 +11,10 @@ namespace ir {
 struct VoidType;
 struct LabelType;
 struct IntType;
-struct BoolType;
 struct FloatType;
-struct PointerType;
-struct ArrayType;
-struct FunctionType;
 
-using Type = Union<VoidType, LabelType, IntType, FloatType, PointerType, ArrayType, FunctionType>;
+using Type = Union<VoidType, LabelType, IntType, FloatType, Box<struct PointerType>, Box<struct ArrayType>,
+                   Box<struct FunctionType>>;
 
 struct VoidType {};
 struct LabelType {};
@@ -25,16 +22,17 @@ struct IntType {
     unsigned width;
 };
 struct FloatType {};
+
 struct PointerType {
-    Box<Type> pointee;
+    Type pointee;
 };
 struct ArrayType {
     unsigned length;
-    Box<Type> element_type;
+    Type element_type;
 };
 struct FunctionType {
-    Box<Type> ret_type;
-    Vec<Box<Type>> arg_types;
+    Type ret_type;
+    Vec<Type> arg_types;
 };
 
 bool operator==(const VoidType &, const VoidType &);

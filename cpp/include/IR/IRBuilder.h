@@ -14,24 +14,22 @@
 namespace sysyf {
 namespace ir {
 
-const Type VOID = VoidType{};
-const Type INT = IntType{32};
-const Type BOOL = IntType{1};
-const Type FLOAT = FloatType{};
-
 class IRBuilder : public ast::ASTVisitor<IRBuilder> {
   public:
     using ASTVisitor<IRBuilder>::visit;
     IRBuilder(RefPtr<Module> m) : module_{m}, builder_{m}, vars_{{}}, funcs_{} {
-        funcs_ = {{"getint", Function::new_(module_, FunctionType{INT, {}}, "get_int")},
-                  {"getfloat", Function::new_(module_, FunctionType{FLOAT, {}}, "get_float")},
-                  {"getch", Function::new_(module_, FunctionType{INT, {}}, "get_char")},
-                  {"getarray", Function::new_(module_, FunctionType{INT, {Type{PointerType{INT}}}}, "get_int_array")},
+        funcs_ = {{"getint", Function::new_(module_, FunctionType{IntType{32}, {}}, "get_int")},
+                  {"getfloat", Function::new_(module_, FunctionType{FloatType{}, {}}, "get_float")},
+                  {"getch", Function::new_(module_, FunctionType{IntType{32}, {}}, "get_char")},
+                  {"getarray", Function::new_(module_, FunctionType{IntType{32}, {Type{PointerType{IntType{32}}}}},
+                                              "get_int_array")},
 
-                  {"putint", Function::new_(module_, FunctionType{VOID, {INT}}, "put_int")},
-                  {"putfloat", Function::new_(module_, FunctionType{VOID, {FLOAT}}, "put_float")},
-                  {"putch", Function::new_(module_, FunctionType{VOID, {INT}}, "put_char")},
-                  {"putarray", Function::new_(module_, FunctionType{VOID, {INT, Type{PointerType{INT}}}}, "put_int_array")}};
+                  {"putint", Function::new_(module_, FunctionType{VoidType{}, {IntType{32}}}, "put_int")},
+                  {"putfloat", Function::new_(module_, FunctionType{VoidType{}, {FloatType{}}}, "put_float")},
+                  {"putch", Function::new_(module_, FunctionType{VoidType{}, {IntType{32}}}, "put_char")},
+                  {"putarray",
+                   Function::new_(module_, FunctionType{VoidType{}, {IntType{32}, Type{PointerType{IntType{32}}}}},
+                                  "put_int_array")}};
     }
     RefPtr<Value> find_var(const std::string &name) const {
         for (auto iter = vars_.rbegin(); iter != vars_.rend(); iter++)
@@ -58,8 +56,8 @@ class IRBuilder : public ast::ASTVisitor<IRBuilder> {
     }
     RefPtr<Value> cast(RefPtr<Value> exp, const Type &target_type) {
         if (exp->type() != target_type) {
-            if (target_type == INT) return builder_.fptosi(exp, target_type);
-            if (target_type == BOOL)
+            if (target_type == IntType{32}) return builder_.fptosi(exp, target_type);
+            if (target_type == IntType{1})
                 return exp->type().is<FloatType>() ? builder_.fcmp(FCmpType::ONE, exp, builder_.const_(0.0))
                                                    : builder_.icmp(ICmpType::NE, exp, builder_.const_(0));
             if (target_type.is<FloatType>()) return builder_.sitofp(exp, target_type);

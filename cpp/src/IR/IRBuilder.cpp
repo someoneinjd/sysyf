@@ -13,12 +13,16 @@
 #include "Instruction.h"
 #include "Type.h"
 #include "TypeAlias.h"
-#include "Debug.hpp"
 
 #define with(i) if (const auto &_ = i; true)
 
 namespace sysyf {
 namespace ir {
+
+const auto INT = IntType{32};
+const auto VOID = VoidType{};
+const auto FLOAT = FloatType{};
+const auto BOOL = IntType{1};
 
 class Scope {
   public:
@@ -50,7 +54,7 @@ class IfThen {
 RefPtr<Value> IRBuilder::visit(RefPtr<const int> expr) { return builder_.const_(*expr); }
 RefPtr<Value> IRBuilder::visit(RefPtr<const float> expr) { return builder_.const_(*expr); }
 RefPtr<Value> IRBuilder::visit(RefPtr<const ast::UnaryExpr> expr) {
-    auto *val = visit(expr->expr.get());
+    auto *val = visit(&expr->expr);
     switch (expr->op) {
         case ast::UnaryOp::POS: return val;
         case ast::UnaryOp::NEG: return val->type().is<IntType>() ? builder_.neg(val) : builder_.fneg(val);
@@ -71,7 +75,7 @@ RefPtr<Value> visit_cmp(T op, InstBuilder &builder, RefPtr<Value> lhs, RefPtr<Va
 
 RefPtr<Value> IRBuilder::visit(RefPtr<const ast::BinaryExpr> expr) {
     if (expr->op != ast::BinaryOp::AND && expr->op != ast::BinaryOp::OR) {
-        auto [lhs, rhs, is_float] = unify_type(visit(expr->lhs.get()), visit(expr->rhs.get()));
+        auto [lhs, rhs, is_float] = unify_type(visit(&expr->lhs), visit(&expr->rhs));
         switch (expr->op) {
             case ast::BinaryOp::ADD: return is_float ? builder_.fadd(lhs, rhs) : builder_.add(lhs, rhs);
             case ast::BinaryOp::SUB: return is_float ? builder_.fsub(lhs, rhs) : builder_.sub(lhs, rhs);
@@ -99,20 +103,20 @@ RefPtr<Value> IRBuilder::visit(RefPtr<const ast::BinaryExpr> expr) {
             default: assert(false && "Unreachable");
         }
     } else if (expr->op == ast::BinaryOp::AND) {
-        auto *lhs = cast(visit(expr->lhs.get()), BOOL);
+        auto *lhs = cast(visit(&expr->lhs), BOOL);
         auto *cond = builder_.alloca_(INT);
         builder_.store(builder_.const_(0), cond);
-        with(IfThen(&builder_, lhs)) builder_.store(cast(visit(expr->rhs.get()), INT), cond);
+        with(IfThen(&builder_, lhs)) builder_.store(cast(visit(&expr->rhs), INT), cond);
         return builder_.load(cond);
     } else {
-        auto *lhs = visit(expr->lhs.get());
+        auto *lhs = visit(&expr->lhs);
         auto *cond = builder_.alloca_(INT);
         builder_.store(builder_.const_(1), cond);
         if (lhs->type().is<FloatType>())
             lhs = builder_.fcmp(FCmpType::OEQ, lhs, builder_.const_(0.0));
         else
             lhs = builder_.icmp(ICmpType::EQ, lhs, builder_.const_(0));
-        with(IfThen(&builder_, lhs)) builder_.store(cast(visit(expr->rhs.get()), INT), cond);
+        with(IfThen(&builder_, lhs)) builder_.store(cast(visit(&expr->rhs), INT), cond);
         return builder_.load(cond);
     }
 }
@@ -120,8 +124,8 @@ RefPtr<Value> IRBuilder::visit(RefPtr<const ast::BinaryExpr> expr) {
 RefPtr<Value> IRBuilder::visit(RefPtr<const ast::LVal> expr, bool require_address) {
     auto *ptr = find_var(expr->name);
     if (expr->array_idx) {
-        auto *index = visit(expr->array_idx->get());
-        if (ptr->type().as<PointerType>()->pointee->is<PointerType>())
+        auto *index = visit(&*expr->array_idx);
+        if (ptr->type().as<PointerType>()->pointee.is<PointerType>())
             ptr = builder_.gep(builder_.load(ptr), {index});
         else
             ptr = builder_.gep(ptr, {builder_.const_(0), index});
@@ -138,24 +142,24 @@ RefPtr<Value> IRBuilder::visit(RefPtr<const ast::FuncCallExpr> expr) {
         auto &fparam = func->args()[i];
         auto &rparam = expr->params[i];
         if (fparam.type().is<PointerType>()) {
-            auto *ptr = visit(rparam->as<ast::LVal>(), true);
-            if (ptr->type().as<PointerType>()->pointee->is<ArrayType>())
+            auto *ptr = visit(rparam.as<ast::LVal>(), true);
+            if (ptr->type().as<PointerType>()->pointee.is<ArrayType>())
                 call_params.push_back(builder_.gep(ptr, {builder_.const_(0), builder_.const_(0)}));
             else
                 call_params.push_back(builder_.load(ptr));
         } else {
-            call_params.push_back(cast(visit(rparam.get()), fparam.type()));
+            call_params.push_back(cast(visit(&rparam), fparam.type()));
         }
     }
     return builder_.call(func, call_params);
 }
 
 void IRBuilder::visit(RefPtr<const ast::AssignStmt> stmt) {
-    auto *lval = visit(stmt->var.get(), true);
-    builder_.store(cast(visit(stmt->val.get()), *lval->type().as<PointerType>()->pointee), lval);
+    auto *lval = visit(&stmt->var, true);
+    builder_.store(cast(visit(&stmt->val), lval->type().as<PointerType>()->pointee), lval);
 }
 
-void IRBuilder::visit(RefPtr<const ast::ExprStmt> stmt) { visit(stmt->expr.get()); }
+void IRBuilder::visit(RefPtr<const ast::ExprStmt> stmt) { visit(&stmt->expr); }
 void IRBuilder::visit(RefPtr<const ast::EmptyStmt>) {}
 
 void IRBuilder::visit(RefPtr<const ast::VarDefStmt> stmt) {
@@ -180,21 +184,21 @@ void IRBuilder::visit(RefPtr<const ast::VarDefStmt> stmt) {
                 if (elem_type.is<FloatType>()) {
                     Vec<float> vals(*stmt->array_idx, 0.0);
                     for (std::size_t i = 0; i < init_vals.size(); i++)
-                        vals[i] = init_vals[i]->is<int>() ? static_cast<float>(*init_vals[i]->as<int>())
-                                                          : *init_vals[i]->as<float>();
+                        vals[i] = init_vals[i].is<int>() ? static_cast<float>(*init_vals[i].as<int>())
+                                                         : *init_vals[i].as<float>();
                     init_val = builder_.const_(vals);
                 } else {
                     Vec<int> vals(*stmt->array_idx, 0);
                     for (std::size_t i = 0; i < init_vals.size(); i++)
-                        vals[i] = init_vals[i]->is<int>() ? *init_vals[i]->as<int>()
-                                                          : static_cast<int>(*init_vals[i]->as<float>());
+                        vals[i] = init_vals[i].is<int>() ? *init_vals[i].as<int>()
+                                                         : static_cast<int>(*init_vals[i].as<float>());
                     init_val = builder_.const_(vals);
                 }
             } else if (not stmt->array_idx) {
-                if (const int *int_val = stmt->init_vals->begin()->get()->as<int>())
+                if (const int *int_val = stmt->init_vals->begin()->as<int>())
                     init_val =
                         type.is<IntType>() ? builder_.const_(*int_val) : builder_.const_(static_cast<float>(*int_val));
-                else if (const float *float_val = stmt->init_vals->begin()->get()->as<float>())
+                else if (const float *float_val = stmt->init_vals->begin()->as<float>())
                     init_val = type.is<IntType>() ? builder_.const_(static_cast<int>(*float_val))
                                                   : builder_.const_(*float_val);
             }
@@ -208,7 +212,7 @@ void IRBuilder::visit(RefPtr<const ast::VarDefStmt> stmt) {
             if (stmt->array_idx) {
                 auto *array_begin = builder_.gep(local_var, {builder_.const_(0), builder_.const_(0)});
                 for (const auto &i : *stmt->init_vals) {
-                    builder_.store(cast(visit(i.get()), elem_type), array_begin);
+                    builder_.store(cast(visit(&i), elem_type), array_begin);
                     array_begin = builder_.gep(array_begin, {builder_.const_(1)});
                 }
                 for (auto i = stmt->init_vals->size(); i < static_cast<std::size_t>(*stmt->array_idx); i++) {
@@ -216,13 +220,13 @@ void IRBuilder::visit(RefPtr<const ast::VarDefStmt> stmt) {
                     array_begin = builder_.gep(array_begin, {builder_.const_(1)});
                 }
             } else {
-                builder_.store(cast(visit(stmt->init_vals->begin()->get()), type), local_var);
+                builder_.store(cast(visit(&*stmt->init_vals->begin()), type), local_var);
             }
         }
     }
 }
 void IRBuilder::visit(RefPtr<const ast::IfStmt> stmt) {
-    auto *cond = cast(visit(stmt->cond.get()), BOOL);
+    auto *cond = cast(visit(&stmt->cond), BOOL);
     if (stmt->else_body) {
         auto *bbif = builder_.function()->append_basic_block(builder_.block()->name() + ".if");
         auto *bbelse = builder_.function()->append_basic_block(builder_.block()->name() + ".else");
@@ -230,23 +234,23 @@ void IRBuilder::visit(RefPtr<const ast::IfStmt> stmt) {
         builder_.branch(cond, bbif, bbelse);
 
         builder_.position_at_end(bbif);
-        with(Scope(this)) visit(stmt->if_body.get());
+        with(Scope(this)) visit(&stmt->if_body);
         if (not builder_.terminated()) builder_.branch(bbend);
 
         builder_.position_at_end(bbelse);
-        with(Scope(this)) visit(stmt->else_body->get());
+        with(Scope(this)) visit(&*stmt->else_body);
         if (not builder_.terminated()) builder_.branch(bbend);
 
         builder_.position_at_end(bbend);
     } else {
-        with(IfThen(&builder_, cond)) with(Scope(this)) visit(stmt->if_body.get());
+        with(IfThen(&builder_, cond)) with(Scope(this)) visit(&stmt->if_body);
     }
 }
 
 void IRBuilder::visit(RefPtr<const ast::BlockStmt> stmt) {
     with(Scope(this)) {
         for (const auto &i : stmt->stmts) {
-            visit(i.get());
+            visit(&i);
             if (builder_.terminated()) break;
         }
     }
@@ -258,14 +262,14 @@ void IRBuilder::visit(RefPtr<const ast::WhileStmt> stmt) {
     while_next_block_ = builder_.function()->append_basic_block(builder_.block()->name() + ".endwhile");
     builder_.branch(while_cond_block_);
     builder_.position_at_end(while_cond_block_);
-    builder_.branch(cast(visit(stmt->cond.get()), BOOL), while_body, while_next_block_);
+    builder_.branch(cast(visit(&stmt->cond), BOOL), while_body, while_next_block_);
     builder_.position_at_end(while_body);
     with(Scope{this}) {
-        if (auto *block = stmt->while_body->as<ast::BlockStmt>()) {
+        if (auto *block = stmt->while_body.as<ast::BlockStmt>()) {
             for (auto &i : block->stmts) {
                 auto *old_while_cond_block = while_cond_block_;
                 auto *old_while_next_block = while_next_block_;
-                visit(i.get());
+                visit(&i);
                 while_cond_block_ = old_while_cond_block;
                 while_next_block_ = old_while_next_block;
                 if (builder_.terminated()) break;
@@ -273,7 +277,7 @@ void IRBuilder::visit(RefPtr<const ast::WhileStmt> stmt) {
         } else {
             auto *old_while_cond_block = while_cond_block_;
             auto *old_while_next_block = while_next_block_;
-            visit(stmt->while_body.get());
+            visit(&stmt->while_body);
             while_cond_block_ = old_while_cond_block;
             while_next_block_ = old_while_next_block;
         }
@@ -285,7 +289,7 @@ void IRBuilder::visit(RefPtr<const ast::BreakStmt>) { builder_.branch(while_next
 void IRBuilder::visit(RefPtr<const ast::ContinueStmt>) { builder_.branch(while_cond_block_); }
 void IRBuilder::visit(RefPtr<const ast::ReturnStmt> stmt) {
     if (auto *ret_val_ptr = find_var("%retval"))
-        builder_.store(cast(visit(stmt->ret_val->get()), *ret_val_ptr->type().as<PointerType>()->pointee), ret_val_ptr);
+        builder_.store(cast(visit(&*stmt->ret_val), ret_val_ptr->type().as<PointerType>()->pointee), ret_val_ptr);
     builder_.branch(ret_block_);
 }
 
@@ -298,7 +302,7 @@ void IRBuilder::visit(RefPtr<const ast::FuncDef> stmt) {
             case ast::Type::VOID: ret_type = VOID; break;
         }
         FunctionType func_type{std::move(ret_type), {}};
-        for (const auto &arg : stmt->params) func_type.arg_types.emplace_back(visit(arg.get()));
+        for (const auto &arg : stmt->params) func_type.arg_types.emplace_back(visit(&arg));
         auto *func = Function::new_(module_, std::move(func_type), stmt->name);
         push_func(stmt->name, func);
         builder_.position_at_end(func->append_basic_block("entry"));
@@ -308,10 +312,10 @@ void IRBuilder::visit(RefPtr<const ast::FuncDef> stmt) {
         for (std::size_t i = 0; i < stmt->params.size(); i++) {
             auto *alloca_arg = builder_.alloca_(func->args()[i].type());
             builder_.store(func->arg(i), alloca_arg);
-            push_var(stmt->params[i]->name, alloca_arg);
+            push_var(stmt->params[i].name, alloca_arg);
         }
-        for (const auto &i : stmt->body->stmts) {
-            visit(i.get());
+        for (const auto &i : stmt->body.stmts) {
+            visit(&i);
             if (builder_.terminated()) break;
         }
         if (not builder_.terminated()) builder_.branch(ret_block_);

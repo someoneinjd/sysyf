@@ -20,14 +20,8 @@ constexpr bool is_unique_type_list() {
 }  // namespace detail
 
 template <typename... Args>
-class Union : public std::variant<Args...> {
+class Union {
   public:
-    using std::variant<Args...>::variant;
-    using std::variant<Args...>::operator=;
-    using std::variant<Args...>::emplace;
-    using std::variant<Args...>::swap;
-    using std::variant<Args...>::index;
-
     Union() = default;
     Union(const Union &) = default;
     Union(Union &&) = default;
@@ -35,24 +29,59 @@ class Union : public std::variant<Args...> {
     Union &operator=(Union &&) = default;
     ~Union() = default;
 
+    template <typename T, typename = std::enable_if_t<
+                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
+                                                 std::is_constructible<std::variant<Args...>, T>>>>
+    Union(T &&arg) : impl_(std::forward<T>(arg)) {}
+
+    template <typename T, typename = std::enable_if_t<
+                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
+                                                 std::is_constructible<std::variant<Args...>, T>>>>
+    Union &operator=(T &&arg) {
+        impl_ = std::forward<T>(arg);
+        return *this;
+    }
+
+    std::size_t index() const { return impl_.index(); }
+
     template <typename T>
     bool is() const {
-        return std::holds_alternative<T>(*this);
+        if constexpr ((std::is_same_v<T, Args> || ...)) {
+            return std::holds_alternative<T>(impl_);
+        } else if constexpr ((std::is_same_v<Box<T>, Args> || ...)) {
+            return std::holds_alternative<Box<T>>(impl_);
+        } else {
+            static_assert(false, "Invalid Type");
+        }
     }
 
     template <typename T>
     const T *as() const {
-        return std::get_if<T>(this);
+        if constexpr ((std::is_same_v<T, Args> || ...)) {
+            return std::get_if<T>(&impl_);
+        } else if constexpr ((std::is_same_v<Box<T>, Args> || ...)) {
+            const auto *ptr = std::get_if<Box<T>>(&impl_);
+            if (ptr) return ptr->get();
+            return nullptr;
+        } else {
+            static_assert(false, "Invalid Type");
+        }
     }
 
     template <typename T>
     T *as() {
-        return std::get_if<T>(this);
+        if constexpr ((std::is_same_v<T, Args> || ...)) {
+            return std::get_if<T>(&impl_);
+        } else if constexpr ((std::is_same_v<Box<T>, Args> || ...)) {
+            auto *ptr = std::get_if<Box<T>>(&impl_);
+            if (ptr) return ptr->get();
+            return nullptr;
+        } else {
+            static_assert(false, "Invalid Type");
+        }
     }
 
-    friend bool operator==(const Union &a, const Union &b) {
-        return static_cast<const std::variant<Args...> &>(a) == static_cast<const std::variant<Args...> &>(b);
-    }
+    friend bool operator==(const Union &a, const Union &b) { return a.impl_ == b.impl_; }
 
     friend bool operator!=(const Union &a, const Union &b) { return not(a == b); }
 
@@ -74,6 +103,7 @@ class Union : public std::variant<Args...> {
     friend bool operator==(const T &a, const Union &b) {
         return b == a;
     }
+
     template <typename T, typename = std::enable_if_t<
                               std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
                                                  std::is_constructible<Union, detail::remove_cvref_t<T>>>>>
@@ -82,7 +112,10 @@ class Union : public std::variant<Args...> {
     }
 
     friend std::ostream &operator<<(std::ostream &out, const Union &u) {
-        return std::visit([&](const auto &v) -> std::ostream & { return out << v; }, u);
+        return std::visit([&](const auto &v) -> std::ostream & { return out << v; }, u.impl_);
     }
+
+  private:
+    std::variant<Args...> impl_;
 };
 }  // namespace sysyf

@@ -93,7 +93,7 @@ class AllocaInst : public Instruction {
         : Instruction(p, std::move(name), PointerType{std::move(t)}, OpCode::Alloca, {}) {}
 
   public:
-    const Type &allocated_type() const { return *type().as<PointerType>()->pointee; }
+    const Type &allocated_type() const { return type().as<PointerType>()->pointee; }
     static bool classof(const Value *v) {
         const auto *i = v->as<Instruction>();
         return i && i->op_code() == OpCode::Alloca;
@@ -117,7 +117,7 @@ class StoreInst : public Instruction {
 
 class LoadInst : public Instruction {
     LoadInst(RefPtr<BasicBlock> p, std::string name, RefPtr<Value> source)
-        : Instruction(p, std::move(name), *source->type().as<PointerType>()->pointee, OpCode::Load, {source}) {}
+        : Instruction(p, std::move(name), source->type().as<PointerType>()->pointee, OpCode::Load, {source}) {}
 
   public:
     static bool classof(const Value *v) {
@@ -134,9 +134,9 @@ inline Type get_type_at(const Type &t, std::size_t len) {
     const Type *temp = &t;
     for (; len != 0; len--) {
         if (const auto *point_type = temp->as<PointerType>()) {
-            temp = point_type->pointee.get();
+            temp = &point_type->pointee;
         } else if (const auto *array_type = temp->as<ArrayType>()) {
-            temp = array_type->element_type.get();
+            temp = &array_type->element_type;
         } else {
             throw std::invalid_argument{"Create a gep instruction with mismatched types and subscripts"};
         }
@@ -244,7 +244,7 @@ class BranchInst : public Instruction {
 
 class CallInst : public Instruction {
     CallInst(RefPtr<BasicBlock> p, std::string name, RefPtr<Value> func, const Vec<RefPtr<Value>> &args)
-        : Instruction(p, std::move(name), *func->type().as<FunctionType>()->ret_type, OpCode::Call, {}) {
+        : Instruction(p, std::move(name), func->type().as<FunctionType>()->ret_type, OpCode::Call, {}) {
         operands().reserve(args.size() + 1);
         operands().push_back(func);
         operands().insert(operands().end(), args.begin(), args.end());

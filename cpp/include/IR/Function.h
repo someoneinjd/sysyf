@@ -36,7 +36,7 @@ class Function : public Value {
     Function(RefPtr<Module> p, FunctionType t, std::string func_name)
         : Value(std::move(t), TypeID::Function, std::move(func_name)), parent_{p}, blocks_{}, id_{} {
         for (const auto &arg_type : type().as<FunctionType>()->arg_types)
-            args_.push_back(Argument{this, *arg_type, id()});
+            args_.push_back(Argument{this, arg_type, id()});
     }
 
   public:
@@ -51,7 +51,7 @@ class Function : public Value {
     const Vec<Argument> &args() const { return args_; }
     RefPtr<Argument> arg(std::size_t i) { return &args_[i]; }
 
-    const Type &ret_type() const { return *type().as<FunctionType>()->ret_type; }
+    const Type &ret_type() const { return type().as<FunctionType>()->ret_type; }
 
     static bool classof(const Value *v) { return v->type_id() == TypeID::Function; }
     static RefPtr<Function> new_(RefPtr<Module> p, FunctionType t, std::string func_name);

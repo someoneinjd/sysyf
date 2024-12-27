@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -74,7 +73,7 @@ antlrcpp::Any ASTBuilder::visitConst_def(SysYFParser::Const_defContext *context)
             ret.array_idx = std::stoi(str);
         }
     }
-    ret.init_vals = Vec<Box<Expr>>{};
+    ret.init_vals = Vec<Expr>{};
     for (auto *expr : context->const_init_val()->exp()) {
         visit(expr);
         if (auto *int_val = val_.as<Expr>()->as<int>()) {
@@ -119,7 +118,7 @@ antlrcpp::Any ASTBuilder::visitVar_def(SysYFParser::Var_defContext *context) {
         }
     }
     if (context->init_val()) {
-        ret.init_vals = Vec<Box<Expr>>{};
+        ret.init_vals = Vec<Expr>{};
         for (auto *expr : context->init_val()->exp()) {
             visit(expr);
             ret.init_vals->emplace_back(std::move(*val_.as<Expr>()));
