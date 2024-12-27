@@ -7,6 +7,8 @@
 
 namespace sysyf {
 namespace detail {
+template <typename T>
+constexpr bool false_v = false;
 
 template <typename T, typename... Args>
 constexpr bool is_unique_type_list() {
@@ -51,7 +53,7 @@ class Union {
         } else if constexpr ((std::is_same_v<Box<T>, Args> || ...)) {
             return std::holds_alternative<Box<T>>(impl_);
         } else {
-            static_assert(false, "Invalid Type");
+            static_assert(detail::false_v<T>, "Invalid Type");
         }
     }
 
@@ -64,7 +66,7 @@ class Union {
             if (ptr) return ptr->get();
             return nullptr;
         } else {
-            static_assert(false, "Invalid Type");
+            static_assert(detail::false_v<T>, "Invalid Type");
         }
     }
 
@@ -77,7 +79,7 @@ class Union {
             if (ptr) return ptr->get();
             return nullptr;
         } else {
-            static_assert(false, "Invalid Type");
+            static_assert(detail::false_v<T>, "Invalid Type");
         }
     }
 

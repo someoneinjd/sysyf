@@ -40,7 +40,7 @@ class InstBuilder {
             for (auto &&v : val) value.push_back(const_(v));
             return ConstantArray::new_(module(), std::move(value));
         } else {
-            static_assert(false, "Unsupported Constant type");
+            static_assert(sysyf::detail::false_v<T>, "Unsupported Constant type");
         }
     }
     RefPtr<Instruction> fneg(RefPtr<Value> exp) {
