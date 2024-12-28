@@ -8,28 +8,28 @@
 namespace sysyf {
 namespace ir {
 
-struct VoidType;
-struct LabelType;
-struct IntType;
-struct FloatType;
+struct VoidType {};
+
+struct LabelType {};
+
+struct IntType {
+    unsigned width;
+};
+
+struct FloatType {};
 
 using Type = Union<VoidType, LabelType, IntType, FloatType, Box<struct PointerType>, Box<struct ArrayType>,
                    Box<struct FunctionType>>;
 
-struct VoidType {};
-struct LabelType {};
-struct IntType {
-    unsigned width;
-};
-struct FloatType {};
-
 struct PointerType {
     Type pointee;
 };
+
 struct ArrayType {
     unsigned length;
     Type element_type;
 };
+
 struct FunctionType {
     Type ret_type;
     Vec<Type> arg_types;

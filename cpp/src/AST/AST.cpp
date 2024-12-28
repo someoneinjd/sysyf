@@ -39,21 +39,21 @@ std::ostream &operator<<(std::ostream &out, const Type op) {
     return out;
 }
 
-std::ostream &operator<<(std::ostream &out, const BinaryExpr &expr) { return out << ASTPrinter{}.visit(&expr); }
-std::ostream &operator<<(std::ostream &out, const UnaryExpr &expr) { return out << ASTPrinter{}.visit(&expr); }
-std::ostream &operator<<(std::ostream &out, const LVal &expr) { return out << ASTPrinter{}.visit(&expr); }
-std::ostream &operator<<(std::ostream &out, const FuncCallExpr &expr) { return out << ASTPrinter{}.visit(&expr); }
+std::ostream &operator<<(std::ostream &out, const BinaryExpr &expr) { return out << ASTPrinter{}.visit(expr); }
+std::ostream &operator<<(std::ostream &out, const UnaryExpr &expr) { return out << ASTPrinter{}.visit(expr); }
+std::ostream &operator<<(std::ostream &out, const LVal &expr) { return out << ASTPrinter{}.visit(expr); }
+std::ostream &operator<<(std::ostream &out, const FuncCallExpr &expr) { return out << ASTPrinter{}.visit(expr); }
 
-std::ostream &operator<<(std::ostream &out, const AssignStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const ExprStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const EmptyStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const VarDefStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const IfStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const WhileStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const BreakStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const ContinueStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const ReturnStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
-std::ostream &operator<<(std::ostream &out, const BlockStmt &stmt) { return out << ASTPrinter{}.visit(&stmt); }
+std::ostream &operator<<(std::ostream &out, const AssignStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const ExprStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const EmptyStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const VarDefStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const IfStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const WhileStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const BreakStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const ContinueStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const ReturnStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
+std::ostream &operator<<(std::ostream &out, const BlockStmt &stmt) { return out << ASTPrinter{}.visit(stmt); }
 
 }  // namespace ast
 }  // namespace sysyf

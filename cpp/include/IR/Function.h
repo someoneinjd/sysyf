@@ -49,7 +49,7 @@ class Function : public Value {
     unsigned id() { return id_++; }
 
     const Vec<Argument> &args() const { return args_; }
-    RefPtr<Argument> arg(std::size_t i) { return &args_[i]; }
+    Argument &arg(std::size_t i) { return args_[i]; }
 
     const Type &ret_type() const { return type().as<FunctionType>()->ret_type; }
 

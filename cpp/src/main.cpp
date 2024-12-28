@@ -37,13 +37,13 @@ int main(int argc, const char **argv) {
 
     if (args["emit-ast"].as<bool>()) {
         sysyf::ast::ASTPrinter p{};
-        std::cout << p.visit(&ast);
+        std::cout << p.visit(ast);
     }
 
     if (args["emit-ir"].as<bool>()) {
         sysyf::ir::Module m{};
         sysyf::ir::IRBuilder builder{&m};
-        builder.visit(&ast);
+        builder.visit(ast);
         std::ofstream output{args["output"].as<std::string>()};
         output << m;
     }

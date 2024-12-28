@@ -3,7 +3,6 @@
 #include <type_traits>
 
 #include "AST.h"
-#include "TypeAlias.h"
 
 namespace sysyf {
 namespace detail {
@@ -12,7 +11,7 @@ struct have_visitor_for : std::false_type {};
 
 template <typename SubClass, typename Node>
 struct have_visitor_for<SubClass, Node,
-                        std::void_t<decltype(std::declval<SubClass>().visit(std::declval<RefPtr<const Node>>()))>>
+                        std::void_t<decltype(std::declval<SubClass>().visit(std::declval<const Node &>()))>>
     : std::true_type {};
 
 template <typename SubClass, typename Node>
@@ -60,38 +59,38 @@ struct ASTVisitor {
         static_assert(detail::have_visitor_for_v<SubClass, VarDefStmt>,
                       "No visit function overloaded for RefPtr<const VarDefStmt> is defined");
     }
-    auto visit(RefPtr<const Expr> expr) {
-        switch (expr->index()) {
-            case 0: return static_cast<SubClass *>(this)->visit(expr->as<int>());
-            case 1: return static_cast<SubClass *>(this)->visit(expr->as<float>());
-            case 2: return static_cast<SubClass *>(this)->visit(expr->as<BinaryExpr>());
-            case 3: return static_cast<SubClass *>(this)->visit(expr->as<UnaryExpr>());
-            case 4: return static_cast<SubClass *>(this)->visit(expr->as<LVal>());
-            case 5: return static_cast<SubClass *>(this)->visit(expr->as<FuncCallExpr>());
+    auto visit(const Expr &expr) {
+        switch (expr.index()) {
+            case 0: return static_cast<SubClass *>(this)->visit(*expr.as<int>());
+            case 1: return static_cast<SubClass *>(this)->visit(*expr.as<float>());
+            case 2: return static_cast<SubClass *>(this)->visit(*expr.as<BinaryExpr>());
+            case 3: return static_cast<SubClass *>(this)->visit(*expr.as<UnaryExpr>());
+            case 4: return static_cast<SubClass *>(this)->visit(*expr.as<LVal>());
+            case 5: return static_cast<SubClass *>(this)->visit(*expr.as<FuncCallExpr>());
             default: assert(false && "Unreachable");
         }
     };
 
-    auto visit(RefPtr<const Stmt> stmt) {
-        switch (stmt->index()) {
-            case 0: return static_cast<SubClass *>(this)->visit(stmt->as<AssignStmt>());
-            case 1: return static_cast<SubClass *>(this)->visit(stmt->as<ExprStmt>());
-            case 2: return static_cast<SubClass *>(this)->visit(stmt->as<EmptyStmt>());
-            case 3: return static_cast<SubClass *>(this)->visit(stmt->as<VarDefStmt>());
-            case 4: return static_cast<SubClass *>(this)->visit(stmt->as<IfStmt>());
-            case 5: return static_cast<SubClass *>(this)->visit(stmt->as<WhileStmt>());
-            case 6: return static_cast<SubClass *>(this)->visit(stmt->as<BreakStmt>());
-            case 7: return static_cast<SubClass *>(this)->visit(stmt->as<ContinueStmt>());
-            case 8: return static_cast<SubClass *>(this)->visit(stmt->as<ReturnStmt>());
-            case 9: return static_cast<SubClass *>(this)->visit(stmt->as<BlockStmt>());
+    auto visit(const Stmt &stmt) {
+        switch (stmt.index()) {
+            case 0: return static_cast<SubClass *>(this)->visit(*stmt.as<AssignStmt>());
+            case 1: return static_cast<SubClass *>(this)->visit(*stmt.as<ExprStmt>());
+            case 2: return static_cast<SubClass *>(this)->visit(*stmt.as<EmptyStmt>());
+            case 3: return static_cast<SubClass *>(this)->visit(*stmt.as<VarDefStmt>());
+            case 4: return static_cast<SubClass *>(this)->visit(*stmt.as<IfStmt>());
+            case 5: return static_cast<SubClass *>(this)->visit(*stmt.as<WhileStmt>());
+            case 6: return static_cast<SubClass *>(this)->visit(*stmt.as<BreakStmt>());
+            case 7: return static_cast<SubClass *>(this)->visit(*stmt.as<ContinueStmt>());
+            case 8: return static_cast<SubClass *>(this)->visit(*stmt.as<ReturnStmt>());
+            case 9: return static_cast<SubClass *>(this)->visit(*stmt.as<BlockStmt>());
             default: assert(false && "Unreachable");
         }
     }
 
-    auto visit(RefPtr<const GlobalDef> stmt) {
-        switch (stmt->index()) {
-            case 0: return static_cast<SubClass *>(this)->visit(stmt->as<VarDefStmt>());
-            case 1: return static_cast<SubClass *>(this)->visit(stmt->as<FuncDef>());
+    auto visit(const GlobalDef &stmt) {
+        switch (stmt.index()) {
+            case 0: return static_cast<SubClass *>(this)->visit(*stmt.as<VarDefStmt>());
+            case 1: return static_cast<SubClass *>(this)->visit(*stmt.as<FuncDef>());
             default: assert(false && "Unreachable");
         }
     }

@@ -278,13 +278,11 @@ antlrcpp::Any ASTBuilder::visitExp(SysYFParser::ExpContext *context) {
             return {};
         if (ret.op == UnaryOp::NEG) {
             if (const auto *int_val = val_.as<Expr>()->as<int>()) {
-                auto val = -(*int_val);
-                val_ = val;
+                val_ = -(*int_val);
                 return {};
             }
             if (const auto *float_val = val_.as<Expr>()->as<float>()) {
-                auto val = -(*float_val);
-                val_ = val;
+                val_ = -(*float_val);
                 return {};
             }
         }

@@ -16,43 +16,43 @@ using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 template <typename T>
 class Box {
   public:
-    Box() : _impl{new T()} {};
+    Box() : impl_{new T()} {};
     template <typename U, typename = std::enable_if_t<
                               std::conjunction_v<std::negation<std::is_same<Box, detail::remove_cvref_t<U>>>,
                                                  std::is_constructible<T, detail::remove_cvref_t<U>>>>>
-    Box(U &&obj) : _impl{new T(std::forward<U>(obj))} {}
+    Box(U &&obj) : impl_{new T(std::forward<U>(obj))} {}
 
-    Box(const Box &other) : Box{*other._impl} {}
-    Box(Box &&other) : Box{std::move(*other._impl)} {}
+    Box(const Box &other) : Box{*other.impl_} {}
+    Box(Box &&other) : Box{std::move(*other.impl_)} {}
     Box &operator=(const Box &other) {
-        *_impl = *other._impl;
+        *impl_ = *other.impl_;
         return *this;
     }
     Box &operator=(Box &&other) {
-        *_impl = std::move(*other._impl);
+        *impl_ = std::move(*other.impl_);
         return *this;
     }
 
     ~Box() = default;
 
-    T &operator*() & { return *_impl; }
-    const T &operator*() const & { return *_impl; }
-    T &&operator*() && { return std::move(*_impl); }
-    const T &&operator*() const && { return std::move(*_impl); }
+    T &operator*() & { return *impl_; }
+    const T &operator*() const & { return *impl_; }
+    T &&operator*() && { return std::move(*impl_); }
+    const T &&operator*() const && { return std::move(*impl_); }
 
-    T *operator->() { return _impl.get(); }
-    const T *operator->() const { return _impl.get(); }
+    T *operator->() { return impl_.get(); }
+    const T *operator->() const { return impl_.get(); }
 
-    T *get() { return _impl.get(); }
-    const T *get() const { return _impl.get(); }
+    T *get() { return impl_.get(); }
+    const T *get() const { return impl_.get(); }
 
-    friend bool operator==(const Box &a, const Box &b) { return *a._impl == *b._impl; }
+    friend bool operator==(const Box &a, const Box &b) { return *a.impl_ == *b.impl_; }
 
-    friend bool operator!=(const Box &a, const Box &b) { return *a._impl != *b._impl; }
+    friend bool operator!=(const Box &a, const Box &b) { return *a.impl_ != *b.impl_; }
 
     friend std::ostream &operator<<(std::ostream &out, const Box &a) { return out << *a; }
 
   private:
-    std::unique_ptr<T> _impl;
+    std::unique_ptr<T> impl_;
 };
 }  // namespace sysyf

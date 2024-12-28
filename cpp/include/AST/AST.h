@@ -15,12 +15,8 @@ enum struct UnaryOp { POS, NEG, NOT };
 
 enum struct Type { INT, FLOAT, VOID };
 
-struct BinaryExpr;
-struct UnaryExpr;
-struct LVal;
-struct FuncCallExpr;
-
-using Expr = Union<int, float, Box<BinaryExpr>, Box<UnaryExpr>, Box<LVal>, Box<FuncCallExpr>>;
+using Expr =
+    Union<int, float, Box<struct BinaryExpr>, Box<struct UnaryExpr>, Box<struct LVal>, Box<struct FuncCallExpr>>;
 
 struct BinaryExpr {
     BinaryOp op;
@@ -46,11 +42,13 @@ struct AssignStmt {
     LVal var;
     Expr val;
 };
+
 struct ExprStmt {
     Expr expr;
 };
 
 struct EmptyStmt {};
+
 struct VarDefStmt {
     bool is_const;
     Type type;
@@ -58,8 +56,11 @@ struct VarDefStmt {
     Opt<int> array_idx;
     Opt<Vec<Expr>> init_vals;
 };
+
 struct BreakStmt {};
+
 struct ContinueStmt {};
+
 struct ReturnStmt {
     Opt<Expr> ret_val;
 };
@@ -98,7 +99,7 @@ struct FuncDef {
 using GlobalDef = Union<VarDefStmt, FuncDef>;
 
 struct Assembly {
-    Vec<Box<GlobalDef>> defs;
+    Vec<GlobalDef> defs;
 };
 
 std::ostream &operator<<(std::ostream &out, const BinaryOp op);

@@ -64,26 +64,26 @@ class IRBuilder : public ast::ASTVisitor<IRBuilder> {
         }
         return exp;
     }
-    RefPtr<Value> visit(RefPtr<const int> expr);
-    RefPtr<Value> visit(RefPtr<const float> expr);
-    RefPtr<Value> visit(RefPtr<const ast::UnaryExpr> expr);
-    RefPtr<Value> visit(RefPtr<const ast::BinaryExpr> expr);
-    RefPtr<Value> visit(RefPtr<const ast::LVal> expr, bool require_address = false);
-    RefPtr<Value> visit(RefPtr<const ast::FuncCallExpr> expr);
+    RefPtr<Value> visit(const int &expr);
+    RefPtr<Value> visit(const float &expr);
+    RefPtr<Value> visit(const ast::UnaryExpr &expr);
+    RefPtr<Value> visit(const ast::BinaryExpr &expr);
+    RefPtr<Value> visit(const ast::LVal &expr, bool require_address = false);
+    RefPtr<Value> visit(const ast::FuncCallExpr &expr);
 
-    void visit(RefPtr<const ast::AssignStmt> stmt);
-    void visit(RefPtr<const ast::ExprStmt> stmt);
-    void visit(RefPtr<const ast::EmptyStmt> stmt);
-    void visit(RefPtr<const ast::VarDefStmt> stmt);
-    void visit(RefPtr<const ast::IfStmt> stmt);
-    void visit(RefPtr<const ast::BlockStmt> stmt);
-    void visit(RefPtr<const ast::WhileStmt> stmt);
-    void visit(RefPtr<const ast::BreakStmt> stmt);
-    void visit(RefPtr<const ast::ContinueStmt> stmt);
-    void visit(RefPtr<const ast::ReturnStmt> stmt);
-    void visit(RefPtr<const ast::FuncDef> stmt);
-    Type visit(RefPtr<const ast::FuncParam> stmt);
-    void visit(RefPtr<const ast::Assembly> stmt);
+    void visit(const ast::AssignStmt &stmt);
+    void visit(const ast::ExprStmt &stmt);
+    void visit(const ast::EmptyStmt &stmt);
+    void visit(const ast::VarDefStmt &stmt);
+    void visit(const ast::IfStmt &stmt);
+    void visit(const ast::BlockStmt &stmt);
+    void visit(const ast::WhileStmt &stmt);
+    void visit(const ast::BreakStmt &stmt);
+    void visit(const ast::ContinueStmt &stmt);
+    void visit(const ast::ReturnStmt &stmt);
+    void visit(const ast::FuncDef &stmt);
+    Type visit(const ast::FuncParam &stmt);
+    void visit(const ast::Assembly &stmt);
 
   private:
     RefPtr<Module> module_;

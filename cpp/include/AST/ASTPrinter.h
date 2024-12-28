@@ -4,33 +4,32 @@
 
 #include "AST.h"
 #include "ASTVisitor.hpp"
-#include "TypeAlias.h"
 
 namespace sysyf {
 namespace ast {
 
 struct ASTPrinter : public ASTVisitor<ASTPrinter> {
     using ASTVisitor<ASTPrinter>::visit;
-    std::string visit(RefPtr<const int> expr);
-    std::string visit(RefPtr<const float> expr);
-    std::string visit(RefPtr<const UnaryExpr> expr);
-    std::string visit(RefPtr<const BinaryExpr> expr);
-    std::string visit(RefPtr<const LVal> expr);
-    std::string visit(RefPtr<const FuncCallExpr> expr);
+    std::string visit(const int &expr);
+    std::string visit(const float &expr);
+    std::string visit(const UnaryExpr &expr);
+    std::string visit(const BinaryExpr &expr);
+    std::string visit(const LVal &expr);
+    std::string visit(const FuncCallExpr &expr);
 
-    std::string visit(RefPtr<const AssignStmt> stmt);
-    std::string visit(RefPtr<const ExprStmt> stmt);
-    std::string visit(RefPtr<const EmptyStmt> stmt);
-    std::string visit(RefPtr<const VarDefStmt> stmt);
-    std::string visit(RefPtr<const IfStmt> stmt);
-    std::string visit(RefPtr<const BlockStmt> stmt);
-    std::string visit(RefPtr<const WhileStmt> stmt);
-    std::string visit(RefPtr<const BreakStmt> stmt);
-    std::string visit(RefPtr<const ContinueStmt> stmt);
-    std::string visit(RefPtr<const ReturnStmt> stmt);
-    std::string visit(RefPtr<const FuncDef> stmt);
-    std::string visit(RefPtr<const FuncParam> stmt);
-    std::string visit(RefPtr<const Assembly> stmt);
+    std::string visit(const AssignStmt &stmt);
+    std::string visit(const ExprStmt &stmt);
+    std::string visit(const EmptyStmt &stmt);
+    std::string visit(const VarDefStmt &stmt);
+    std::string visit(const IfStmt &stmt);
+    std::string visit(const BlockStmt &stmt);
+    std::string visit(const WhileStmt &stmt);
+    std::string visit(const BreakStmt &stmt);
+    std::string visit(const ContinueStmt &stmt);
+    std::string visit(const ReturnStmt &stmt);
+    std::string visit(const FuncDef &stmt);
+    std::string visit(const FuncParam &stmt);
+    std::string visit(const Assembly &stmt);
 
   private:
     std::size_t indent_ = 0;
