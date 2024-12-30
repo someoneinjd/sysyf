@@ -131,18 +131,12 @@ class debug {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &out, const Vec<T> &val) {
-    if (val.empty()) return out << "[]";
-    out << "[" << val[0];
-    for (std::size_t i = 1; i < val.size(); i++) out << ", " << val[i];
-    return out << "]";
+    return out << "[" << join(", ", val) << "]";
 }
 
 template <typename T>
 std::ostream &operator<<(std::ostream &out, const List<T> &val) {
-    if (val.empty()) return out << "[]";
-    out << "[" << *val.begin();
-    for (auto i = std::next(val.begin()); i != val.end(); i++) out << ", " << *i;
-    return out << "]";
+    return out << "[" << join(", ", val) << "]";
 }
 
 template <typename K, typename V>

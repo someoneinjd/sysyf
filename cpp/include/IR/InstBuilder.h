@@ -30,17 +30,17 @@ class InstBuilder {
 
     template <typename T>
     RefPtr<Constant> const_(T &&val) {
-        if constexpr (std::is_integral_v<::sysyf::detail::remove_cvref_t<T>>) {
+        if constexpr (std::is_integral_v<remove_cvref_t<T>>) {
             return ConstantInt::new_(module(), val);
-        } else if constexpr (std::is_floating_point_v<::sysyf::detail::remove_cvref_t<T>>) {
+        } else if constexpr (std::is_floating_point_v<remove_cvref_t<T>>) {
             return ConstantFP::new_(module(), val);
-        } else if constexpr (detail::is_vec<::sysyf::detail::remove_cvref_t<T>>::value) {
+        } else if constexpr (detail::is_vec<remove_cvref_t<T>>::value) {
             Vec<RefPtr<Constant>> value{};
             value.reserve(val.size());
             for (auto &&v : val) value.push_back(const_(v));
             return ConstantArray::new_(module(), std::move(value));
         } else {
-            static_assert(sysyf::detail::false_v<T>, "Unsupported Constant type");
+            static_assert(false_v<T>, "Unsupported Constant type");
         }
     }
     RefPtr<Instruction> fneg(RefPtr<Value> exp) {

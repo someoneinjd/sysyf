@@ -8,6 +8,7 @@
 #include "BasicBlock.h"
 #include "Type.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 #include "Value.h"
 
 namespace sysyf {
@@ -57,19 +58,16 @@ class Function : public Value {
     static RefPtr<Function> new_(RefPtr<Module> p, FunctionType t, std::string func_name);
     friend std::ostream &operator<<(std::ostream &out, const Function &arg) {
         out << (arg.blocks_.empty() ? "declare " : "define ");
-        out << arg.type().as<FunctionType>()->ret_type << " @" << arg.name() << "(";
-        if (not arg.args_.empty()) out << arg.args_[0];
-        for (std::size_t i = 1; i < arg.args_.size(); i++) out << ", " << arg.args_[i];
-        if (arg.blocks_.empty()) return out << ")\n";
-        out << ") {\n";
-        for (const auto &bb : arg.blocks_) out << *bb << "\n";
-        return out << "}\n";
+        out << arg.type().as<FunctionType>()->ret_type << " @" << arg.name();
+        out << "(" << join(", ", arg.args_) << ")";
+        if (arg.blocks_.empty()) return out;
+        return out << " {" << join("\n", arg.blocks_) << "}\n";
     }
 
   private:
     RefPtr<Module> parent_;
     Vec<Argument> args_;
-    List<std::unique_ptr<BasicBlock>> blocks_;
+    Vec<std::unique_ptr<BasicBlock>> blocks_;
     unsigned id_;  // for number instructions
 };
 }  // namespace ir

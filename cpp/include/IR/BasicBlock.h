@@ -5,6 +5,7 @@
 #include "Instruction.h"
 #include "Type.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 #include "Value.h"
 
 namespace sysyf {
@@ -33,16 +34,14 @@ class BasicBlock : public Value {
     static bool classof(const Value *v) { return v->type_id() == TypeID::BasicBlock; }
     static RefPtr<BasicBlock> new_(RefPtr<Function> p, std::string block_name);
     friend std::ostream &operator<<(std::ostream &out, const BasicBlock &bb) {
-        out << bb.name() << ":\n";
-        for (const auto &inst : bb.instructions_) out << "  " << *inst << "\n";
-        return out;
+        return out << bb.name() << ":" << join("\n    ", bb.instructions_) << "\n";
     }
 
     friend class Function;
 
   private:
     RefPtr<Function> parent_;
-    List<std::unique_ptr<Instruction>> instructions_;
+    Vec<std::unique_ptr<Instruction>> instructions_;
 };
 }  // namespace ir
 }  // namespace sysyf

@@ -6,6 +6,7 @@
 #include "Function.h"
 #include "GlobalVariable.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 
 namespace sysyf {
 namespace ir {
@@ -37,9 +38,7 @@ class Module {
     }
 
     friend std::ostream &operator<<(std::ostream &out, const Module &mod) {
-        for (const auto &var : mod.global_vars_) out << *var << "\n";
-        for (const auto &func : mod.functions_) out << *func << "\n";
-        return out;
+        return out << join("\n", mod.global_vars_) << "\n" << join("\n", mod.functions_) << "\n";
     }
 
   private:

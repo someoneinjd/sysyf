@@ -3,13 +3,9 @@
 #include <ostream>
 #include <type_traits>
 
+#include "Utils.hpp"
+
 namespace sysyf {
-
-namespace detail {
-template <typename T>
-using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
-
-}  // namespace detail
 
 // A simplified implementation of `std::indirect` in C++ 26
 // basically a copyable `std::unique_ptr` with value semantics
@@ -17,9 +13,9 @@ template <typename T>
 class Box {
   public:
     Box() : impl_{new T()} {};
-    template <typename U, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Box, detail::remove_cvref_t<U>>>,
-                                                 std::is_constructible<T, detail::remove_cvref_t<U>>>>>
+    template <typename U,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Box, remove_cvref_t<U>>>,
+                                                             std::is_constructible<T, remove_cvref_t<U>>>>>
     Box(U &&obj) : impl_{new T(std::forward<U>(obj))} {}
 
     Box(const Box &other) : Box{*other.impl_} {}

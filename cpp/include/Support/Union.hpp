@@ -4,22 +4,9 @@
 #include <variant>
 
 #include "Box.hpp"
+#include "Utils.hpp"
 
 namespace sysyf {
-namespace detail {
-template <typename T>
-constexpr bool false_v = false;
-
-template <typename T, typename... Args>
-constexpr bool is_unique_type_list() {
-    if constexpr (sizeof...(Args) == 0)
-        return true;
-    else if constexpr ((std::is_same_v<T, Args> || ...))
-        return false;
-    else
-        return is_unique_type_list<Args...>();
-}
-}  // namespace detail
 
 template <typename... Args>
 class Union {
@@ -31,14 +18,14 @@ class Union {
     Union &operator=(Union &&) = default;
     ~Union() = default;
 
-    template <typename T, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
-                                                 std::is_constructible<std::variant<Args...>, T>>>>
+    template <typename T,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Union, remove_cvref_t<T>>>,
+                                                             std::is_constructible<std::variant<Args...>, T>>>>
     Union(T &&arg) : impl_(std::forward<T>(arg)) {}
 
-    template <typename T, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
-                                                 std::is_constructible<std::variant<Args...>, T>>>>
+    template <typename T,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Union, remove_cvref_t<T>>>,
+                                                             std::is_constructible<std::variant<Args...>, T>>>>
     Union &operator=(T &&arg) {
         impl_ = std::forward<T>(arg);
         return *this;
@@ -53,7 +40,7 @@ class Union {
         } else if constexpr ((std::is_same_v<Box<T>, Args> || ...)) {
             return std::holds_alternative<Box<T>>(impl_);
         } else {
-            static_assert(detail::false_v<T>, "Invalid Type");
+            static_assert(false_v<T>, "Invalid Type");
         }
     }
 
@@ -66,7 +53,7 @@ class Union {
             if (ptr) return ptr->get();
             return nullptr;
         } else {
-            static_assert(detail::false_v<T>, "Invalid Type");
+            static_assert(false_v<T>, "Invalid Type");
         }
     }
 
@@ -79,7 +66,7 @@ class Union {
             if (ptr) return ptr->get();
             return nullptr;
         } else {
-            static_assert(detail::false_v<T>, "Invalid Type");
+            static_assert(false_v<T>, "Invalid Type");
         }
     }
 
@@ -87,28 +74,28 @@ class Union {
 
     friend bool operator!=(const Union &a, const Union &b) { return not(a == b); }
 
-    template <typename T, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
-                                                 std::is_constructible<Union, detail::remove_cvref_t<T>>>>>
+    template <typename T,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Union, remove_cvref_t<T>>>,
+                                                             std::is_constructible<Union, remove_cvref_t<T>>>>>
     friend bool operator==(const Union &a, const T &b) {
         return a.is<T>() && *(a.as<T>()) == b;
     }
-    template <typename T, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
-                                                 std::is_constructible<Union, detail::remove_cvref_t<T>>>>>
+    template <typename T,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Union, remove_cvref_t<T>>>,
+                                                             std::is_constructible<Union, remove_cvref_t<T>>>>>
     friend bool operator!=(const Union &a, const T &b) {
         return not(a == b);
     }
-    template <typename T, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
-                                                 std::is_constructible<Union, detail::remove_cvref_t<T>>>>>
+    template <typename T,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Union, remove_cvref_t<T>>>,
+                                                             std::is_constructible<Union, remove_cvref_t<T>>>>>
     friend bool operator==(const T &a, const Union &b) {
         return b == a;
     }
 
-    template <typename T, typename = std::enable_if_t<
-                              std::conjunction_v<std::negation<std::is_same<Union, detail::remove_cvref_t<T>>>,
-                                                 std::is_constructible<Union, detail::remove_cvref_t<T>>>>>
+    template <typename T,
+              typename = std::enable_if_t<std::conjunction_v<std::negation<std::is_same<Union, remove_cvref_t<T>>>,
+                                                             std::is_constructible<Union, remove_cvref_t<T>>>>>
     friend bool operator!=(const T &a, const Union &b) {
         return not(b == a);
     }

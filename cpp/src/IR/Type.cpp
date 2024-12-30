@@ -1,7 +1,5 @@
 #include "Type.h"
 
-#include <cstddef>
-
 namespace sysyf {
 namespace ir {
 bool operator==(const VoidType &, const VoidType &) { return true; }
@@ -31,10 +29,7 @@ std::ostream &operator<<(std::ostream &out, const ArrayType &t) {
     return out << "[" << t.length << " x " << t.element_type << "]";
 }
 std::ostream &operator<<(std::ostream &out, const FunctionType &t) {
-    out << t.ret_type << " (";
-    if (not t.arg_types.empty()) out << t.arg_types[0];
-    for (std::size_t i = 1; i < t.arg_types.size(); i++) out << ", " << t.arg_types[i];
-    return out;
+    return out << t.ret_type << " (" << join(", ", t.arg_types) << ")";
 }
 
 }  // namespace ir
