@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 template <typename T>
 std::ostream &operator<<(std::ostream &out, const std::unique_ptr<T> &ptr) {
@@ -27,6 +28,11 @@ using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 template <typename T>
 constexpr bool false_v = false;
+
+template <typename T>
+struct is_vec : std::false_type {};
+template <typename T>
+struct is_vec<std::vector<T>> : std::true_type {};
 
 template <typename T, typename... Args>
 constexpr bool is_unique_type_list() {

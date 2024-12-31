@@ -9,15 +9,10 @@
 #include "Module.h"
 #include "Type.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 
 namespace sysyf {
 namespace ir {
-namespace detail {
-template <typename T>
-struct is_vec : std::false_type {};
-template <typename T>
-struct is_vec<Vec<T>> : std::true_type {};
-};  // namespace detail
 class InstBuilder {
   public:
     InstBuilder() = default;
@@ -34,7 +29,7 @@ class InstBuilder {
             return ConstantInt::new_(module(), val);
         } else if constexpr (std::is_floating_point_v<remove_cvref_t<T>>) {
             return ConstantFP::new_(module(), val);
-        } else if constexpr (detail::is_vec<remove_cvref_t<T>>::value) {
+        } else if constexpr (is_vec<remove_cvref_t<T>>::value) {
             Vec<RefPtr<Constant>> value{};
             value.reserve(val.size());
             for (auto &&v : val) value.push_back(const_(v));
