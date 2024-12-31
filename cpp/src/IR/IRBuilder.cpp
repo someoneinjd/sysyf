@@ -1,6 +1,5 @@
 #include "IRBuilder.h"
 
-#include <cassert>
 #include <cstddef>
 #include <type_traits>
 
@@ -13,6 +12,7 @@
 #include "Instruction.h"
 #include "Type.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 
 #define with(i) if (const auto &_ = i; true)
 
@@ -62,6 +62,7 @@ RefPtr<Value> IRBuilder::visit(const ast::UnaryExpr &expr) {
             return builder_.zext(val->type().is<IntType>() ? builder_.icmp(ICmpType::EQ, val, builder_.const_(0))
                                                            : builder_.fcmp(FCmpType::OEQ, val, builder_.const_(0.0)),
                                  INT);
+        default: unreachable();
     }
 }
 
@@ -75,7 +76,9 @@ RefPtr<Value> visit_cmp(T op, InstBuilder &builder, RefPtr<Value> lhs, RefPtr<Va
 
 RefPtr<Value> IRBuilder::visit(const ast::BinaryExpr &expr) {
     if (expr.op != ast::BinaryOp::AND && expr.op != ast::BinaryOp::OR) {
-        auto [lhs, rhs, is_float] = unify_type(visit(expr.lhs), visit(expr.rhs));
+        auto *lhs_old = visit(expr.lhs);
+        auto *rhs_old = visit(expr.rhs);
+        auto [lhs, rhs, is_float] = unify_type(lhs_old, rhs_old);
         switch (expr.op) {
             case ast::BinaryOp::ADD: return is_float ? builder_.fadd(lhs, rhs) : builder_.add(lhs, rhs);
             case ast::BinaryOp::SUB: return is_float ? builder_.fsub(lhs, rhs) : builder_.sub(lhs, rhs);
@@ -100,7 +103,7 @@ RefPtr<Value> IRBuilder::visit(const ast::BinaryExpr &expr) {
             case ast::BinaryOp::GTE:
                 return is_float ? visit_cmp(FCmpType::OGE, builder_, lhs, rhs)
                                 : visit_cmp(ICmpType::SGE, builder_, lhs, rhs);
-            default: assert(false && "Unreachable");
+            default: unreachable();
         }
     } else if (expr.op == ast::BinaryOp::AND) {
         auto *lhs = cast(visit(expr.lhs), BOOL);
@@ -173,7 +176,7 @@ void IRBuilder::visit(const ast::VarDefStmt &stmt) {
             type = FLOAT;
             elem_type = FLOAT;
             break;
-        default: assert(false && "Unreachable");
+        default: unreachable();
     }
     if (stmt.array_idx) type = ArrayType{static_cast<unsigned>(*stmt.array_idx), std::move(type)};
     if (vars_.size() == 1) {

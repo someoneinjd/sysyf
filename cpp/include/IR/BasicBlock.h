@@ -34,7 +34,7 @@ class BasicBlock : public Value {
     static bool classof(const Value *v) { return v->type_id() == TypeID::BasicBlock; }
     static RefPtr<BasicBlock> new_(RefPtr<Function> p, std::string block_name);
     friend std::ostream &operator<<(std::ostream &out, const BasicBlock &bb) {
-        return out << bb.name() << ":" << join("\n    ", bb.instructions_) << "\n";
+        return out << bb.name() << ":\n    " << join("\n    ", bb.instructions_) << "\n";
     }
 
     friend class Function;

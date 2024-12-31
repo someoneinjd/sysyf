@@ -72,6 +72,7 @@ class Instruction : public Value {
     Instruction &operator=(const Instruction &) = delete;
     const Vec<RefPtr<Value>> &operands() const { return operands_; }
     RefPtr<Value> operand(std::size_t i) const { return operands_[i]; }
+    RefPtr<BasicBlock> parent() const { return parent_; }
     OpCode op_code() const { return code_; }
     static bool classof(const Value *v) { return v->type_id() == TypeID::Instruction; }
     static RefPtr<Instruction> new_(RefPtr<BasicBlock> p, std::string name, Type t, OpCode op,

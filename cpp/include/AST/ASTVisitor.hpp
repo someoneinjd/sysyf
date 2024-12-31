@@ -1,5 +1,4 @@
 #pragma once
-#include <cassert>
 #include <type_traits>
 
 #include "AST.h"
@@ -67,7 +66,7 @@ struct ASTVisitor {
             case 3: return static_cast<SubClass *>(this)->visit(*expr.as<UnaryExpr>());
             case 4: return static_cast<SubClass *>(this)->visit(*expr.as<LVal>());
             case 5: return static_cast<SubClass *>(this)->visit(*expr.as<FuncCallExpr>());
-            default: assert(false && "Unreachable");
+            default: unreachable();
         }
     };
 
@@ -83,7 +82,7 @@ struct ASTVisitor {
             case 7: return static_cast<SubClass *>(this)->visit(*stmt.as<ContinueStmt>());
             case 8: return static_cast<SubClass *>(this)->visit(*stmt.as<ReturnStmt>());
             case 9: return static_cast<SubClass *>(this)->visit(*stmt.as<BlockStmt>());
-            default: assert(false && "Unreachable");
+            default: unreachable();
         }
     }
 
@@ -91,7 +90,7 @@ struct ASTVisitor {
         switch (stmt.index()) {
             case 0: return static_cast<SubClass *>(this)->visit(*stmt.as<VarDefStmt>());
             case 1: return static_cast<SubClass *>(this)->visit(*stmt.as<FuncDef>());
-            default: assert(false && "Unreachable");
+            default: unreachable();
         }
     }
 };

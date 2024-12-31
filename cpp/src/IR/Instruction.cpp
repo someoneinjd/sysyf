@@ -6,6 +6,7 @@
 #include "BasicBlock.h"
 #include "Type.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 #include "Value.h"
 
 namespace sysyf {
@@ -123,6 +124,7 @@ std::ostream &operator<<(std::ostream &out, OpCode op_code) {
         case OpCode::Ret: return out << "ret";
         case OpCode::Br: return out << "br";
         case OpCode::Switch: return out << "switch";
+        default: unreachable();
     }
 }
 std::ostream &operator<<(std::ostream &out, ICmpType icmp_type) {
@@ -137,6 +139,7 @@ std::ostream &operator<<(std::ostream &out, ICmpType icmp_type) {
         case ICmpType::SGE: return out << "sge";
         case ICmpType::SLT: return out << "slt";
         case ICmpType::SLE: return out << "sle";
+        default: unreachable();
     }
 }
 std::ostream &operator<<(std::ostream &out, FCmpType fcmp_type) {
@@ -153,6 +156,7 @@ std::ostream &operator<<(std::ostream &out, FCmpType fcmp_type) {
         case FCmpType::UGE: return out << "uge";
         case FCmpType::ULT: return out << "ult";
         case FCmpType::ULE: return out << "ule";
+        default: unreachable();
     }
 }
 

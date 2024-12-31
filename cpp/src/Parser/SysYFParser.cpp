@@ -2628,7 +2628,7 @@ bool SysYFParser::sempred(RuleContext *context, size_t ruleIndex, size_t predica
   return true;
 }
 
-bool SysYFParser::cond_expSempred(Cond_expContext *_localctx, size_t predicateIndex) {
+bool SysYFParser::cond_expSempred(Cond_expContext *, size_t predicateIndex) {
   switch (predicateIndex) {
     case 0: return precpred(_ctx, 4);
     case 1: return precpred(_ctx, 3);
@@ -2641,7 +2641,7 @@ bool SysYFParser::cond_expSempred(Cond_expContext *_localctx, size_t predicateIn
   return true;
 }
 
-bool SysYFParser::expSempred(ExpContext *_localctx, size_t predicateIndex) {
+bool SysYFParser::expSempred(ExpContext *, size_t predicateIndex) {
   switch (predicateIndex) {
     case 4: return precpred(_ctx, 2);
     case 5: return precpred(_ctx, 1);

@@ -1,6 +1,5 @@
 #include "ASTBuilder.h"
 
-#include <cassert>
 #include <optional>
 #include <string>
 #include <utility>
@@ -8,6 +7,7 @@
 #include "AST.h"
 #include "Any.h"
 #include "TypeAlias.h"
+#include "Utils.hpp"
 
 namespace sysyf {
 namespace ast {
@@ -81,7 +81,7 @@ antlrcpp::Any ASTBuilder::visitConst_def(SysYFParser::Const_defContext *context)
         } else if (auto *float_val = val_.as<Expr>()->as<float>()) {
             ret.init_vals->emplace_back(*float_val);
         } else {
-            assert(false);
+            unreachable();
         }
     }
     val_ = Stmt{std::move(ret)};

@@ -6,13 +6,21 @@
 #include <string>
 #include <type_traits>
 
-template<typename T>
+template <typename T>
 std::ostream &operator<<(std::ostream &out, const std::unique_ptr<T> &ptr) {
     if (ptr) return out << *ptr;
     return out << "(nullptr)";
 }
 
 namespace sysyf {
+
+[[noreturn]] inline void unreachable() {
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+    __assume(false);
+#else  // GCC, Clang
+    __builtin_unreachable();
+#endif
+}
 
 template <typename T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
