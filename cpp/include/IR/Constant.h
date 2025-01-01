@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <ios>
 #include <ostream>
 #include <sstream>
@@ -45,7 +46,9 @@ class ConstantInt : public Constant {
 inline static std::string get_binary_float_str(float val) {
     double i = val;
     std::stringstream s{};
-    s << std::hex << "0x" << *(int64_t *)(&i);
+    int64_t target = 0;
+    std::memcpy(&target, &i, sizeof(double));
+    s << std::hex << "0x" << target;
     return s.str();
 }
 
