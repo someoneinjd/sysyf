@@ -76,6 +76,10 @@ RefPtr<Value> visit_cmp(T op, InstBuilder &builder, RefPtr<Value> lhs, RefPtr<Va
 
 RefPtr<Value> IRBuilder::visit(const ast::BinaryExpr &expr) {
     if (expr.op != ast::BinaryOp::AND && expr.op != ast::BinaryOp::OR) {
+        /* In C++, value computations and side effects of the initialization of every parameter in a function call are
+         * indeterminately sequenced. So `unify_type(visit(expr.lhs), visit(expr.rhs))` is wrong as `rhs` may be visited
+         * before `lhs`.
+         */
         auto *lhs_old = visit(expr.lhs);
         auto *rhs_old = visit(expr.rhs);
         auto [lhs, rhs, is_float] = unify_type(lhs_old, rhs_old);
