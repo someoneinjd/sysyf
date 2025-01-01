@@ -61,7 +61,7 @@ class Function : public Value {
         out << arg.type().as<FunctionType>()->ret_type << " @" << arg.name();
         out << "(" << join(", ", arg.args_) << ")";
         if (arg.blocks_.empty()) return out;
-        return out << " {" << join("\n", arg.blocks_) << "}\n";
+        return out << " {\n" << join("\n", arg.blocks_) << "}\n";
     }
 
   private:
